@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 專案名稱
 
-search-house 基於 React 18 TypeScript Tailwind CSS 的交集租屋搜尋平台 主打多條件交集地圖搜尋與生活圈資訊整合
+search-house 基於 Next.js TypeScript Tailwind CSS 的交集租屋搜尋平台 主打多條件交集地圖搜尋與生活圈資訊整合
 
 ## 專案開發指令
 
