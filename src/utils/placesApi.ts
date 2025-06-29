@@ -295,31 +295,16 @@ export const searchPlaces = async (query: string, bounds?: MapBounds): Promise<P
     }
 
     let allPlaces: PlaceResult[] = [];
-    let nextPageToken: string | undefined;
     let pageCount = 0;
-    const maxPages = 3; // 最多 3 頁（總共 60 個結果）
+    const maxPages = 1; // 只取第一頁（20 個結果）
 
-    // 第一頁搜尋
+    // 只搜尋第一頁
     try {
       const firstPage = await fetchPlacesPage(query, apiKey, bounds);
       allPlaces = [...firstPage.places];
-      nextPageToken = firstPage.nextPageToken;
       pageCount = 1;
 
       console.log(`📄 第 ${pageCount} 頁: 找到 ${firstPage.places.length} 個地點`);
-
-      // 繼續搜尋後續頁面
-      while (nextPageToken && pageCount < maxPages) {
-        console.log(`⏳ 等待 2 秒後搜尋第 ${pageCount + 1} 頁...`);
-        await delay(2000); // 等待 token 生效
-
-        const nextPage = await fetchPlacesPage(query, apiKey, bounds, nextPageToken);
-        allPlaces = [...allPlaces, ...nextPage.places];
-        nextPageToken = nextPage.nextPageToken;
-        pageCount++;
-
-        console.log(`📄 第 ${pageCount} 頁: 找到 ${nextPage.places.length} 個地點`);
-      }
 
       if (allPlaces.length > 0) {
         console.log(`✅ 總共找到 ${allPlaces.length} 個真實地點 for "${query}" (${pageCount} 頁)`);
