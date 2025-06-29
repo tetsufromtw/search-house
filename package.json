@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@googlemaps/js-api-loader": "^1.16.10",
+    "@vis.gl/react-google-maps": "^1.5.3",
     "next": "15.3.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

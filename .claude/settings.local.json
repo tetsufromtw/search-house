@@ -3,7 +3,12 @@
     "allow": [
       "Bash(mkdir:*)",
       "Bash(npm install:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(mv:*)",
+      "Bash(rm:*)",
+      "Bash(npm run build:*)",
+      "WebFetch(domain:console.cloud.google.com)",
+      "mcp__ide__getDiagnostics"
     ],
     "deny": []
   }

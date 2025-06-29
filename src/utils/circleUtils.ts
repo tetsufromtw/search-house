@@ -1,4 +1,4 @@
-import { Point, Circle, Intersection, COLORS, ColorName } from '../types/circle';
+import { Point, Circle, Intersection, ColorName } from '../types/circle';
 
 export const getTailwindColor = (colorName: ColorName, shade: number): string => {
   const colorMap: { [key in ColorName]: { [key: number]: string } } = {
