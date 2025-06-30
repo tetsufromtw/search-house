@@ -35,7 +35,7 @@ const MapHandler: React.FC<{
 
     // 只處理還沒有 circle 實例的新圓圈
     const newCircles = circles.filter(circleData => !circleData.circle);
-    
+
     if (newCircles.length > 0) {
       const updatedCircles = circles.map(circleData => {
         if (!circleData.circle) {
@@ -91,14 +91,14 @@ const MapHandler: React.FC<{
         }
         return circleData;
       });
-      
+
       onCirclesUpdate(updatedCircles);
     }
 
     // 計算並顯示交集區域
     if (circles.length >= 2) {
       const newIntersections = calculateAllIntersections(circles);
-      
+
       // 清除舊的交集標記
       intersections.forEach(intersection => {
         if (intersection.marker) {
@@ -123,30 +123,25 @@ const MapHandler: React.FC<{
 
   // 監聽地圖邊界變化
   useEffect(() => {
-    console.log('🔧 設置地圖監聽器，map:', !!map, 'onMapBoundsChanged:', !!onMapBoundsChanged);
     if (!map || !onMapBoundsChanged) return;
 
     let debounceTimer: NodeJS.Timeout;
 
     const handleBoundsChanged = () => {
-      console.log('🔔 bounds_changed 事件觸發!');
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
-        console.log('⚡ 防抖結束，開始處理邊界');
         const bounds = map.getBounds();
-        console.log('📏 原始 bounds:', bounds);
         if (bounds) {
           const northeast = bounds.getNorthEast();
           const southwest = bounds.getSouthWest();
-          
+
           const mapBounds: MapBounds = {
             north: northeast.lat(),
             south: southwest.lat(),
             east: northeast.lng(),
             west: southwest.lng()
           };
-          
-          console.log('🗺️ 地圖邊界變化:', mapBounds);
+
           console.log('🔍 邊界檢查:', {
             north: mapBounds.north,
             south: mapBounds.south,
@@ -161,11 +156,9 @@ const MapHandler: React.FC<{
       }, 100); // 減少防抖時間到100ms
     };
 
-    console.log('📡 添加 bounds_changed 監聽器');
     const listener = map.addListener('bounds_changed', handleBoundsChanged);
-    
+
     return () => {
-      console.log('🧹 清理地圖監聽器');
       google.maps.event.removeListener(listener);
       clearTimeout(debounceTimer);
     };
@@ -193,7 +186,7 @@ const GoogleMapWithCircles: React.FC<{ onPropertiesUpdate?: (properties: SuumoPr
         // React 內部查找地圖實例的方式可能需要調整
         // 暫時使用全域變量或其他方式
       }
-      
+
       // 暫時回退到固定的東京範圍
       return {
         north: 35.8,
@@ -212,12 +205,12 @@ const GoogleMapWithCircles: React.FC<{ onPropertiesUpdate?: (properties: SuumoPr
     setIsLoading(true);
     console.log('🚀 開始搜尋需求圓圈', bounds ? '(使用地圖範圍)' : '(使用預設範圍)');
     console.log('🗺️ 傳入的 bounds:', bounds);
-    
+
     try {
       // 清空現有圓圈
       setCircles([]);
       setRequirementCircles([]);
-      
+
       // 等待 Google Maps API 完全載入
       const waitForGoogleMaps = () => {
         return new Promise<void>((resolve) => {
@@ -235,50 +228,50 @@ const GoogleMapWithCircles: React.FC<{ onPropertiesUpdate?: (properties: SuumoPr
       };
 
       await waitForGoogleMaps();
-      
+
       // 使用即時回調版本，每當有圓圈準備好就立即添加到地圖
       await createRequirementCirclesAsync(DEFAULT_REQUIREMENTS, (reqCircle) => {
-          console.log(`🎯 需求「${reqCircle.requirement}」圓圈準備就緒，立即添加到地圖`);
-          
-          // 將此需求的所有地點轉換為圓圈資料
-          const newCircles: CircleData[] = [];
-          reqCircle.places.forEach(place => {
-            newCircles.push({
-              id: `${reqCircle.id}-${place.place_id}`,
-              center: place.location,
-              radius: 1000, // 1公里
-              color: reqCircle.color,
-              colorIndex: reqCircle.colorIndex,
-              requirementId: reqCircle.id,
-              placeName: place.name,
-              address: place.address,
-              rating: place.rating,
-              requirement: reqCircle.requirement
-            });
+        console.log(`🎯 需求「${reqCircle.requirement}」圓圈準備就緒，立即添加到地圖`);
+
+        // 將此需求的所有地點轉換為圓圈資料
+        const newCircles: CircleData[] = [];
+        reqCircle.places.forEach(place => {
+          newCircles.push({
+            id: `${reqCircle.id}-${place.place_id}`,
+            center: place.location,
+            radius: 1000, // 1公里
+            color: reqCircle.color,
+            colorIndex: reqCircle.colorIndex,
+            requirementId: reqCircle.id,
+            placeName: place.name,
+            address: place.address,
+            rating: place.rating,
+            requirement: reqCircle.requirement
           });
-          
-          // 即時更新圓圈狀態
-          setCircles(prevCircles => [...prevCircles, ...newCircles]);
-          
-          // 更新需求圓圈狀態
-          setRequirementCircles(prevReqCircles => {
-            const exists = prevReqCircles.some(rc => rc.id === reqCircle.id);
-            if (!exists) {
-              return [...prevReqCircles, reqCircle];
-            }
-            return prevReqCircles;
-          });
-          
-          console.log(`✨ 新增 ${newCircles.length} 個圓圈到地圖`);
-        }, bounds);
-        
-        console.log('🎉 所有需求搜尋完成');
-      } catch (error) {
-        console.error('❌ 初始化需求時發生錯誤:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+        });
+
+        // 即時更新圓圈狀態
+        setCircles(prevCircles => [...prevCircles, ...newCircles]);
+
+        // 更新需求圓圈狀態
+        setRequirementCircles(prevReqCircles => {
+          const exists = prevReqCircles.some(rc => rc.id === reqCircle.id);
+          if (!exists) {
+            return [...prevReqCircles, reqCircle];
+          }
+          return prevReqCircles;
+        });
+
+        console.log(`✨ 新增 ${newCircles.length} 個圓圈到地圖`);
+      }, bounds);
+
+      console.log('🎉 所有需求搜尋完成');
+    } catch (error) {
+      console.error('❌ 初始化需求時發生錯誤:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // 處理地圖邊界變化
   const handleMapBoundsChanged = (bounds: MapBounds) => {
@@ -305,7 +298,7 @@ const GoogleMapWithCircles: React.FC<{ onPropertiesUpdate?: (properties: SuumoPr
         setIsInitialized(true);
       }
     }, 5000); // 延長到5秒，減少觸發
-    
+
     return () => clearTimeout(timer);
   }, [isInitialized]);
 
@@ -313,10 +306,10 @@ const GoogleMapWithCircles: React.FC<{ onPropertiesUpdate?: (properties: SuumoPr
   useEffect(() => {
     if (intersections.length > 0) {
       setIsLoading(true);
-      
+
       // 選擇第一個交集區域進行搜尋
       const firstIntersection = intersections[0];
-      
+
       searchPropertiesInIntersection(
         firstIntersection.center,
         firstIntersection.radius
@@ -359,7 +352,7 @@ const GoogleMapWithCircles: React.FC<{ onPropertiesUpdate?: (properties: SuumoPr
   };
 
   return (
-    <APIProvider 
+    <APIProvider
       apiKey={process.env.NEXT_PUBLIC_GOOGLE_API_KEY || ''}
       libraries={['places']}
     >
@@ -370,8 +363,8 @@ const GoogleMapWithCircles: React.FC<{ onPropertiesUpdate?: (properties: SuumoPr
           className="w-full h-full"
           mapId="search-house-map"
         >
-          <MapHandler 
-            circles={circles} 
+          <MapHandler
+            circles={circles}
             onCirclesUpdate={setCircles}
             intersections={intersections}
             onIntersectionsUpdate={setIntersections}
@@ -384,12 +377,12 @@ const GoogleMapWithCircles: React.FC<{ onPropertiesUpdate?: (properties: SuumoPr
           <div className="text-sm text-[#111111] font-light mb-4">
             需求搜尋結果
           </div>
-          
+
           {requirementCircles.map((reqCircle) => (
             <div key={reqCircle.id} className="mb-3">
               <div className="flex items-center gap-2 mb-1">
-                <span 
-                  className="inline-block w-3 h-3 rounded-full" 
+                <span
+                  className="inline-block w-3 h-3 rounded-full"
                   style={{ backgroundColor: reqCircle.color }}
                 ></span>
                 <span className="text-xs text-[#111111] font-medium">
@@ -401,7 +394,7 @@ const GoogleMapWithCircles: React.FC<{ onPropertiesUpdate?: (properties: SuumoPr
               </div>
             </div>
           ))}
-          
+
           <div className="border-t border-[#e5e5e5] pt-3 mt-4">
             <div className="text-xs text-[#999999] font-light mb-2">
               總圓圈數: {circles.length}
@@ -414,7 +407,7 @@ const GoogleMapWithCircles: React.FC<{ onPropertiesUpdate?: (properties: SuumoPr
               {isLoading && <span className="ml-2">載入中...</span>}
             </div>
           </div>
-          
+
           <button
             onClick={clearAllCircles}
             className="px-4 py-2 bg-[#111111] text-white rounded-none text-xs hover:opacity-80 transition-opacity font-light"

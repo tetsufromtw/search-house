@@ -11,6 +11,7 @@ export interface SuumoProperty {
   size: string;
   tags: string[];
   distance?: string;
+  coordinates?: LatLng;
 }
 
 interface SuumoSearchParams {
@@ -21,85 +22,142 @@ interface SuumoSearchParams {
   minPrice?: number;
 }
 
-// SUUMO API 基礎 URL
-const SUUMO_BASE_URL = 'https://suumo.jp/jj/chintai/ichiran/FR301FC001/';
+// SUUMO API 回應結構
+interface SuumoSearchResponse {
+  smatch: {
+    condition: string;
+    resultset: {
+      firsthit: number;
+      hits: number;
+      item: SuumoPropertyLocation[];
+    };
+  };
+}
 
-// 構建 SUUMO 搜尋 URL
+interface SuumoPropertyLocation {
+  bukkenCdList: string[];
+  lg: number; // 經度
+  lt: number; // 緯度  
+  shubetsuList: string[];
+}
+
+// SUUMO API URLs
+const SUUMO_SEARCH_URL = 'https://suumo.jp/jj/JJ903FC020/';
+
+// 構建 SUUMO 搜尋 URL（基於經緯度矩形範圍）
 export const buildSuumoSearchUrl = (params: SuumoSearchParams): string => {
-  const baseParams = {
-    ar: '030',           // 區域代碼
-    bs: '040',           // 建物種別
-    ta: '13',            // 東京都
-    sc: '13101,13102,13103,13104,13105,13113,13106,13107,13108,13118,13121,13122,13123,13109,13110,13111,13112,13114,13115,13120,13116,13117,13119', // 東京23區
-    cb: params.minPrice?.toString() || '0.0',
-    ct: params.maxPrice?.toString() || '9999999',
-    mb: '0',
-    mt: '9999999',
-    et: '9999999',
-    cn: '9999999',
-    shkr1: '03',
-    shkr2: '03',
-    shkr3: '03',
-    shkr4: '03',
-    sngz: '',
-    po1: '25',           // 徒步25分鐘內
-    pc: '50',            // 每頁50筆
-    page: params.page?.toString() || '1'
+  // 計算搜尋矩形範圍（基於中心點和半徑）
+  const radiusInDegrees = params.radius / 111320; // 大約轉換為度數
+  const north = params.center.lat + radiusInDegrees;
+  const south = params.center.lat - radiusInDegrees;
+  const east = params.center.lng + radiusInDegrees;
+  const west = params.center.lng - radiusInDegrees;
+
+  const searchParams = {
+    UID: 'smapi343',
+    STMP: Date.now().toString(),
+    ATT: '393f6c8aacc78e917f1ab33986f3e5b346dd947a', // 固定參數
+    FORMAT: '1',
+    CALLBACK: 'SUUMO.CALLBACK.FUNCTION',
+    P: params.page?.toString() || '1',
+    CNT: '50', // 限制結果數量
+    GAZO: '2',
+    PROT: '1',
+    SE: '040', // 賃貸物件
+    KUKEIPT1LT: north.toString(),
+    KUKEIPT1LG: east.toString(),
+    KUKEIPT2LT: south.toString(),
+    KUKEIPT2LG: west.toString(),
+    LITE_KBN: '1'
   };
 
-  const urlParams = new URLSearchParams(baseParams);
-  return `${SUUMO_BASE_URL}?${urlParams.toString()}`;
+  const urlParams = new URLSearchParams(searchParams);
+  return `${SUUMO_SEARCH_URL}?${urlParams.toString()}`;
 };
 
-// 模擬 SUUMO 數據（因為實際 API 可能有 CORS 限制）
+// 基於搜尋範圍生成智能模擬數據
 export const getMockSuumoData = (params: SuumoSearchParams): Promise<SuumoProperty[]> => {
   return new Promise((resolve) => {
     setTimeout(() => {
+      console.log('🎭 生成基於座標的模擬 SUUMO 資料:', params.center);
+      
+      // 根據搜尋中心座標決定區域
+      let areaName = '渋谷区';
+      let stationName = '渋谷駅';
+      
+      if (params.center.lat > 35.7) {
+        areaName = '新宿区';
+        stationName = '新宿駅';
+      } else if (params.center.lng > 139.77) {
+        areaName = '台東区';
+        stationName = '上野駅';
+      } else if (params.center.lng < 139.7) {
+        areaName = '世田谷区';
+        stationName = '下北沢駅';
+      }
+
       const mockData: SuumoProperty[] = [
         {
-          id: 'suumo-1',
-          title: '新宿駅徒歩8分マンション',
-          price: '180,000',
-          location: '東京都新宿区西新宿',
-          size: '25㎡',
-          tags: ['ワンルーム', '駅近', 'エレベーター'],
-          distance: '徒歩8分'
+          id: `mock-${Date.now()}-1`,
+          title: `${areaName}築浅デザイナーズマンション`,
+          price: '165,000',
+          location: `東京都${areaName}`,
+          size: '26㎡',
+          tags: ['ワンルーム', '築浅', 'デザイナーズ'],
+          distance: `${stationName}徒歩${Math.floor(Math.random() * 10) + 3}分`,
+          coordinates: params.center
         },
         {
-          id: 'suumo-2',
-          title: '渋谷区デザイナーズアパート',
-          price: '280,000',
-          location: '東京都渋谷区恵比寿',
-          size: '35㎡',
-          tags: ['1K', 'デザイナーズ', '南向き'],
-          distance: '徒歩12分'
+          id: `mock-${Date.now()}-2`,
+          title: `${stationName}近コンパクトルーム`,
+          price: '120,000',
+          location: `東京都${areaName}`,
+          size: '22㎡',
+          tags: ['1K', '駅近', 'エレベーター'],
+          distance: `${stationName}徒歩${Math.floor(Math.random() * 8) + 2}分`,
+          coordinates: {
+            lat: params.center.lat + (Math.random() - 0.5) * 0.01,
+            lng: params.center.lng + (Math.random() - 0.5) * 0.01
+          }
         },
         {
-          id: 'suumo-3',
-          title: '港区高級マンション',
-          price: '450,000',
-          location: '東京都港区六本木',
-          size: '55㎡',
-          tags: ['1LDK', '高級', 'コンシェルジュ'],
-          distance: '徒歩5分'
+          id: `mock-${Date.now()}-3`,
+          title: `${areaName}陽当たり良好物件`,
+          price: '195,000',
+          location: `東京都${areaName}`,
+          size: '30㎡',
+          tags: ['1LDK', '南向き', '陽当たり良好'],
+          distance: `${stationName}徒歩${Math.floor(Math.random() * 12) + 5}分`,
+          coordinates: {
+            lat: params.center.lat + (Math.random() - 0.5) * 0.008,
+            lng: params.center.lng + (Math.random() - 0.5) * 0.008
+          }
         },
         {
-          id: 'suumo-4',
-          title: '品川区ファミリー向け',
-          price: '320,000',
-          location: '東京都品川区大崎',
-          size: '65㎡',
-          tags: ['2LDK', 'ファミリー', 'ペット可'],
-          distance: '徒歩15分'
-        },
-        {
-          id: 'suumo-5',
-          title: '中央区リノベ物件',
-          price: '350,000',
-          location: '東京都中央区銀座',
-          size: '45㎡',
+          id: `mock-${Date.now()}-4`,
+          title: `リノベーション済み${areaName}物件`,
+          price: '285,000',
+          location: `東京都${areaName}`,
+          size: '38㎡',
           tags: ['1LDK', 'リノベーション', '築浅'],
-          distance: '徒歩6分'
+          distance: `${stationName}徒歩${Math.floor(Math.random() * 15) + 4}分`,
+          coordinates: {
+            lat: params.center.lat + (Math.random() - 0.5) * 0.012,
+            lng: params.center.lng + (Math.random() - 0.5) * 0.012
+          }
+        },
+        {
+          id: `mock-${Date.now()}-5`,
+          title: `${stationName}エリア高層階角部屋`,
+          price: '225,000',
+          location: `東京都${areaName}`,
+          size: '32㎡',
+          tags: ['1K', '高層階', '角部屋'],
+          distance: `${stationName}徒歩${Math.floor(Math.random() * 18) + 6}分`,
+          coordinates: {
+            lat: params.center.lat + (Math.random() - 0.5) * 0.015,
+            lng: params.center.lng + (Math.random() - 0.5) * 0.015
+          }
         }
       ];
 
@@ -118,27 +176,152 @@ export const getMockSuumoData = (params: SuumoSearchParams): Promise<SuumoProper
         );
       }
 
+      console.log(`🏠 生成了 ${filteredData.length} 筆 ${areaName} 附近的模擬物件`);
       resolve(filteredData);
-    }, 500); // 模擬網路延遲
+    }, 800); // 模擬網路延遲
   });
 };
 
-// 實際的 SUUMO API 請求（可能會遇到 CORS 問題）
+// 解析 SUUMO JSONP 回應
+const parseSuumoJsonp = (jsonpResponse: string): SuumoSearchResponse | null => {
+  try {
+    // 處理直接 JSON 格式（來自我們的代理）
+    if (jsonpResponse.trim().startsWith('{')) {
+      const parsed = JSON.parse(jsonpResponse);
+      
+      // 檢查是否有錯誤訊息
+      if (parsed.smatch && parsed.smatch.errors) {
+        console.error('SUUMO API 錯誤:', parsed.smatch.errors.error[0].message);
+        return null;
+      }
+      
+      return parsed;
+    }
+    
+    // 處理 JSONP 格式
+    const jsonStart = jsonpResponse.indexOf('(') + 1;
+    const jsonEnd = jsonpResponse.lastIndexOf(')');
+    if (jsonStart > 0 && jsonEnd > jsonStart) {
+      const jsonStr = jsonpResponse.substring(jsonStart, jsonEnd);
+      const parsed = JSON.parse(jsonStr);
+      
+      // 檢查是否有錯誤訊息
+      if (parsed.smatch && parsed.smatch.errors) {
+        console.error('SUUMO API 錯誤:', parsed.smatch.errors.error[0].message);
+        return null;
+      }
+      
+      return parsed;
+    }
+    
+    throw new Error('無效的回應格式');
+  } catch (error) {
+    console.error('解析 SUUMO JSONP 失敗:', error);
+    return null;
+  }
+};
+
+// 生成假的物件詳細資料（因為只有物件ID，無法取得完整資訊）
+const generateMockPropertyDetails = (bukkenCd: string, location: LatLng): SuumoProperty => {
+  const prices = ['85,000', '120,000', '180,000', '250,000', '95,000'];
+  const sizes = ['25㎡', '30㎡', '35㎡', '45㎡', '28㎡'];
+  const titles = [
+    '築浅デザイナーズマンション',
+    '駅近コンパクトルーム',
+    '陽当たり良好1K',
+    'リノベーション物件',
+    '高層階角部屋'
+  ];
+  const areas = ['渋谷区', '新宿区', '港区', '中央区', '千代田区'];
+  const stations = ['渋谷駅', '新宿駅', '表参道駅', '銀座駅', '東京駅'];
+  
+  const index = parseInt(bukkenCd.slice(-1)) % 5;
+  
+  return {
+    id: bukkenCd,
+    title: titles[index],
+    price: prices[index],
+    location: `東京都${areas[index]}`,
+    size: sizes[index],
+    tags: ['ワンルーム', '駅近', 'エレベーター'],
+    distance: `${stations[index]}徒歩${Math.floor(Math.random() * 15) + 3}分`,
+    coordinates: location
+  };
+};
+
+// 實際的 SUUMO API 請求（通過 Next.js API 代理）
 export const fetchSuumoData = async (params: SuumoSearchParams): Promise<SuumoProperty[]> => {
   try {
-    const url = buildSuumoSearchUrl(params);
-    console.log('SUUMO Search URL:', url);
+    // 計算搜尋矩形範圍（基於中心點和半徑）
+    const radiusInDegrees = params.radius / 111320; // 大約轉換為度數
+    const north = params.center.lat + radiusInDegrees;
+    const south = params.center.lat - radiusInDegrees;
+    const east = params.center.lng + radiusInDegrees;
+    const west = params.center.lng - radiusInDegrees;
+
+    const searchParams = new URLSearchParams({
+      UID: 'smapi343',
+      STMP: Date.now().toString(),
+      ATT: '393f6c8aacc78e917f1ab33986f3e5b346dd947a',
+      FORMAT: '1',
+      CALLBACK: 'SUUMO.CALLBACK.FUNCTION',
+      P: params.page?.toString() || '1',
+      CNT: '50',
+      GAZO: '2',
+      PROT: '1',
+      SE: '040',
+      KUKEIPT1LT: north.toString(),
+      KUKEIPT1LG: east.toString(),
+      KUKEIPT2LT: south.toString(),
+      KUKEIPT2LG: west.toString(),
+      LITE_KBN: '1'
+    });
+
+    const proxyUrl = `/api/suumo?${searchParams.toString()}`;
+    console.log('🏠 通過代理請求 SUUMO:', proxyUrl);
     
-    // 由於 CORS 限制，這裡使用模擬數據
-    return await getMockSuumoData(params);
+    // 使用 Next.js API 代理
+    const response = await fetch(proxyUrl);
     
-    // 如果要使用真實 API，需要後端代理或 CORS 解決方案
-    // const response = await fetch(url);
-    // const html = await response.text();
-    // return parseSuumoHtml(html);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const jsonpText = await response.text();
+    console.log('📝 SUUMO 原始回應:', jsonpText.substring(0, 500) + '...');
+    
+    const parsedData = parseSuumoJsonp(jsonpText);
+    
+    if (!parsedData || !parsedData.smatch.resultset.item) {
+      console.warn('⚠️ 無法解析 SUUMO 資料，使用模擬資料');
+      return await getMockSuumoData(params);
+    }
+    
+    console.log(`✅ SUUMO 找到 ${parsedData.smatch.resultset.hits} 筆物件`);
+    
+    // 轉換前5筆資料為 SuumoProperty 格式
+    const properties: SuumoProperty[] = [];
+    const items = parsedData.smatch.resultset.item.slice(0, 5);
+    
+    for (const item of items) {
+      for (const bukkenCd of item.bukkenCdList) {
+        if (properties.length >= 5) break;
+        
+        const property = generateMockPropertyDetails(bukkenCd, {
+          lat: item.lt,
+          lng: item.lg
+        });
+        properties.push(property);
+      }
+      if (properties.length >= 5) break;
+    }
+    
+    console.log('🏠 處理後的物件資料:', properties);
+    return properties;
     
   } catch (error) {
-    console.error('Error fetching SUUMO data:', error);
+    console.error('❌ SUUMO API 請求失敗:', error);
+    console.log('🔄 回退到模擬資料');
     return await getMockSuumoData(params);
   }
 };
