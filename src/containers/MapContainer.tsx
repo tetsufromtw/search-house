@@ -11,8 +11,8 @@ interface MapContainerProps {
 export default function MapContainer({ className = "" }: MapContainerProps) {
 
   return (
-    <div className={`flex-1 bg-white border border-[#e5e5e5] shadow-sm relative ${className}`}>
-      <div className="h-96 xl:h-[600px]">
+    <div className={`flex-1 bg-white border border-gray-200 shadow-sm relative ${className}`}>
+      <div className="h-64 sm:h-80 md:h-96 lg:h-[500px] xl:h-[600px] 2xl:h-[700px]">
         <Map>
           <MapHandler />
         </Map>
