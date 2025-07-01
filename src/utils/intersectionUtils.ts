@@ -3,19 +3,16 @@ interface LatLng {
   lng: number;
 }
 
-interface CircleData {
-  id: string;
-  center: LatLng;
-  radius: number;
-  color: string;
-  colorIndex: number;
-}
+// 使用 SearchContext 中的類型定義
+import { CircleData } from '../context/SearchContext';
 
 export interface IntersectionArea {
+  id: string;
   center: LatLng;
   radius: number;
   circles: string[];
   marker?: google.maps.Marker;
+  isHighlighted?: boolean;
 }
 
 // 計算兩點之間的距離（公尺）
@@ -52,23 +49,33 @@ export const calculateCircleIntersection = (circle1: CircleData, circle2: Circle
   if (distance + Math.min(circle1.radius, circle2.radius) <= Math.max(circle1.radius, circle2.radius)) {
     const smallerCircle = circle1.radius <= circle2.radius ? circle1 : circle2;
     return {
+      id: `intersection-${circle1.id}-${circle2.id}`,
       center: smallerCircle.center,
       radius: smallerCircle.radius,
-      circles: [circle1.id, circle2.id]
+      circles: [circle1.id, circle2.id],
+      isHighlighted: false
     };
   }
 
-  // 計算交集區域的中心點（兩圓心連線的中點）
-  const centerLat = (circle1.center.lat + circle2.center.lat) / 2;
-  const centerLng = (circle1.center.lng + circle2.center.lng) / 2;
+  // 計算交集區域的中心點（加權中心點，根據半徑大小調整）
+  const r1 = circle1.radius;
+  const r2 = circle2.radius;
+  const totalRadius = r1 + r2;
+  const weight1 = r2 / totalRadius; // 較小圓的權重較大
+  const weight2 = r1 / totalRadius;
   
-  // 計算交集區域的半徑（簡化計算）
-  const intersectionRadius = Math.min(circle1.radius, circle2.radius) * 0.6;
+  const centerLat = circle1.center.lat * weight1 + circle2.center.lat * weight2;
+  const centerLng = circle1.center.lng * weight1 + circle2.center.lng * weight2;
+  
+  // 改進交集半徑計算 - 基於實際的幾何交集
+  const intersectionRadius = Math.min(r1, r2) * Math.max(0.3, 1 - distance / (r1 + r2));
 
   return {
+    id: `intersection-${circle1.id}-${circle2.id}`,
     center: { lat: centerLat, lng: centerLng },
     radius: intersectionRadius,
-    circles: [circle1.id, circle2.id]
+    circles: [circle1.id, circle2.id],
+    isHighlighted: false
   };
 };
 
@@ -96,7 +103,28 @@ export const pointInCircle = (point: LatLng, circle: CircleData): boolean => {
 
 // 檢查一個點是否在交集區域內
 export const pointInIntersection = (point: LatLng, intersection: IntersectionArea, allCircles: CircleData[]): boolean => {
-  // 點必須在交集涉及的所有圓圈內
+  // 首先檢查點是否在交集圓形區域內
+  const distanceFromCenter = calculateDistance(point, intersection.center);
+  const isInIntersectionArea = distanceFromCenter <= intersection.radius;
+  
+  if (!isInIntersectionArea) {
+    return false;
+  }
+  
+  // 然後驗證點確實在所有相關圓圈的交集內
   const relevantCircles = allCircles.filter(circle => intersection.circles.includes(circle.id));
-  return relevantCircles.every(circle => pointInCircle(point, circle));
+  const isInAllCircles = relevantCircles.every(circle => pointInCircle(point, circle));
+  
+  console.log('🎯 點擊檢測:', {
+    point,
+    intersectionId: intersection.id,
+    distanceFromCenter,
+    intersectionRadius: intersection.radius,
+    isInIntersectionArea,
+    relevantCirclesCount: relevantCircles.length,
+    isInAllCircles,
+    finalResult: isInIntersectionArea && isInAllCircles
+  });
+  
+  return isInIntersectionArea && isInAllCircles;
 };

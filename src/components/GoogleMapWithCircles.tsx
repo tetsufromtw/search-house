@@ -181,7 +181,7 @@ const GoogleMapWithCircles: React.FC<{ onPropertiesUpdate?: (properties: SuumoPr
 
     try {
       // 尋找地圖實例
-      let map: google.maps.Map | null = null;
+      const map: google.maps.Map | null = null;
       if (mapInstance._reactInternalFiber) {
         // React 內部查找地圖實例的方式可能需要調整
         // 暫時使用全域變量或其他方式
