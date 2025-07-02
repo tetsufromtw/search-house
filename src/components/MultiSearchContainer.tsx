@@ -5,12 +5,13 @@
  * 整合地圖、控制面板和統計資訊
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Map, useMap } from '@vis.gl/react-google-maps';
 import { useMapBoundsListener } from '@/hooks/useMapBoundsListener';
 import { useMultiLocationSearch } from '@/hooks/useMultiLocationSearch';
 import { RequirementType } from '@/types/multiLocationSearch';
 import { SEARCH_REQUIREMENTS } from '@/config/searchRequirements';
+import { MapScreenshotButton } from './MapScreenshotButton';
 
 // 預設地圖中心（東京車站）
 const DEFAULT_CENTER = { lat: 35.6762, lng: 139.6503 };
@@ -28,6 +29,7 @@ interface ControlPanelProps {
   manualSearch: () => void;
   clearAll: () => void;
   bounds: any;
+  mapContainerRef: React.RefObject<HTMLDivElement | null>;
 }
 
 function ControlPanel({
@@ -38,7 +40,8 @@ function ControlPanel({
   toggleVisibility,
   manualSearch,
   clearAll,
-  bounds
+  bounds,
+  mapContainerRef
 }: ControlPanelProps) {
   return (
     <div className="w-80 bg-white rounded-lg shadow-md p-6">
@@ -140,6 +143,25 @@ function ControlPanel({
         >
           清除全部
         </button>
+        
+        {/* 截圖按鈕 */}
+        <div className="pt-3 border-t border-gray-200">
+          <MapScreenshotButton
+            mapContainerRef={mapContainerRef}
+            className="w-full"
+            defaultOptions={{
+              filename: 'search-house-map',
+              quality: 0.9,
+              includeTimestamp: true
+            }}
+            onSuccess={() => {
+              console.log('✅ 地圖截圖下載成功');
+            }}
+            onError={(error) => {
+              console.error('❌ 地圖截圖失敗:', error);
+            }}
+          />
+        </div>
       </div>
       
       {/* 統計資訊 */}
@@ -256,6 +278,7 @@ function MapSearchLogic({ onStateChange }: { onStateChange: (data: any) => void 
  */
 export function MultiSearchContainer() {
   const [searchData, setSearchData] = useState<any>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
 
   const handleStateChange = React.useCallback((data: any) => {
     setSearchData(data);
@@ -274,12 +297,17 @@ export function MultiSearchContainer() {
           manualSearch={searchData.manualSearch}
           clearAll={searchData.clearAll}
           bounds={searchData.bounds}
+          mapContainerRef={mapContainerRef}
         />
       )}
       
       {/* 地圖區域 */}
       <div className="flex-1 bg-white rounded-lg shadow-md overflow-hidden">
-        <div style={{ width: '100%', height: '700px' }}>
+        <div 
+          ref={mapContainerRef}
+          style={{ width: '100%', height: '700px', position: 'relative' }}
+          className="map-screenshot-container"
+        >
           <Map
             defaultCenter={DEFAULT_CENTER}
             defaultZoom={DEFAULT_ZOOM}
