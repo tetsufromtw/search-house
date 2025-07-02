@@ -25,7 +25,6 @@ interface ControlPanelProps {
   stats: any;
   requirements: any;
   toggleRequirement: (id: RequirementType) => void;
-  toggleVisibility: (id: RequirementType) => void;
   manualSearch: () => void;
   clearAll: () => void;
   bounds: any;
@@ -37,7 +36,6 @@ function ControlPanel({
   stats,
   requirements,
   toggleRequirement,
-  toggleVisibility,
   manualSearch,
   clearAll,
   bounds,
@@ -73,26 +71,13 @@ function ControlPanel({
                   {/* 啟用/停用 */}
                   <button
                     onClick={() => toggleRequirement(requirementId)}
-                    className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                    className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
                       requirement.enabled
                         ? 'bg-green-100 text-green-800 hover:bg-green-200'
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >
-                    {requirement.enabled ? '啟用' : '停用'}
-                  </button>
-                  
-                  {/* 顯示/隱藏 */}
-                  <button
-                    onClick={() => toggleVisibility(requirementId)}
-                    disabled={!requirement.enabled}
-                    className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                      requirement.visible && requirement.enabled
-                        ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    } ${!requirement.enabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    {requirement.visible ? '顯示' : '隱藏'}
+                    {requirement.enabled ? '✓ 啟用' : '✕ 停用'}
                   </button>
                 </div>
               </div>
@@ -219,8 +204,10 @@ function ControlPanel({
             </div>
           )}
           
-          <div className="text-xs text-gray-500 mt-2 p-2 bg-gray-50 rounded">
-            💡 縮放等級 &lt; 14 時自動啟用聚合模式，點擊聚合圓圈可放大檢視
+          <div className="text-xs text-gray-500 mt-2 p-2 bg-gray-50 rounded space-y-1">
+            <div>💡 縮放等級 &lt; 14 時自動啟用聚合模式</div>
+            <div>🎯 多個需求時只顯示與其他需求有交集的圓圈</div>
+            <div>📍 單一需求時顯示該需求的所有圓圈</div>
           </div>
         </div>
       </div>
@@ -293,7 +280,6 @@ export function MultiSearchContainer() {
           stats={searchData.stats}
           requirements={searchData.requirements}
           toggleRequirement={searchData.toggleRequirement}
-          toggleVisibility={searchData.toggleVisibility}
           manualSearch={searchData.manualSearch}
           clearAll={searchData.clearAll}
           bounds={searchData.bounds}

@@ -197,6 +197,49 @@ class SuumoTokenManager {
   }
 
   /**
+   * 檢查 API 回應是否包含認證錯誤
+   */
+  isTokenInvalid(responseText: string): boolean {
+    // 檢查 SUUMO API 的認證錯誤訊息
+    const errorPatterns = [
+      '認証エラーです。',           // 日文認證錯誤
+      '認証エラー',               // 簡化版本
+      'authentication error',     // 英文版本
+      'auth error',               // 簡化英文
+      '"errors"',                 // JSON 錯誤格式
+      'error',                    // 通用錯誤檢查
+    ];
+
+    const lowercaseResponse = responseText.toLowerCase();
+    
+    // 檢查是否包含任何錯誤模式
+    for (const pattern of errorPatterns) {
+      if (responseText.includes(pattern) || lowercaseResponse.includes(pattern.toLowerCase())) {
+        console.log(`🚨 偵測到認證錯誤模式: "${pattern}"`);
+        return true;
+      }
+    }
+
+    // 檢查 JSONP 回應中的錯誤結構
+    try {
+      const jsonMatch = responseText.match(/SUUMO\.CALLBACK\.FUNCTION\((.*)\)/);
+      if (jsonMatch) {
+        const jsonData = JSON.parse(jsonMatch[1]);
+        
+        // 檢查是否有錯誤結構
+        if (jsonData.smatch?.errors?.error) {
+          console.log('🚨 偵測到 SUUMO API 錯誤結構:', jsonData.smatch.errors);
+          return true;
+        }
+      }
+    } catch (error) {
+      // JSON 解析錯誤，繼續檢查其他模式
+    }
+
+    return false;
+  }
+
+  /**
    * 取得快取狀態
    */
   getCacheStatus(): { hasCache: boolean; isValid: boolean; expiresIn?: number } {

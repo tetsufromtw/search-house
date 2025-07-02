@@ -62,6 +62,7 @@ export function useMultiLocationSearch(
 
   // Refs 避免依賴變化
   const circlesRef = useRef<Map<string, google.maps.Circle>>(new Map());
+  const markersRef = useRef<Map<string, google.maps.Marker>>(new Map());
   const clusterCirclesRef = useRef<Map<string, google.maps.Circle>>(new Map());
   const clusterMarkersRef = useRef<Map<string, google.maps.Marker>>(new Map());
   const clustersRef = useRef<Map<RequirementType, LocationCluster[]>>(new Map());
@@ -159,12 +160,17 @@ export function useMultiLocationSearch(
     });
   }, []);
 
-  // 清理所有圓圈
+  // 清理所有圓圈和標記
   const clearAllCircles = useCallback(() => {
     circlesRef.current.forEach(circle => {
       circle.setMap(null);
     });
     circlesRef.current.clear();
+    
+    markersRef.current.forEach(marker => {
+      marker.setMap(null);
+    });
+    markersRef.current.clear();
   }, []);
 
   // 清理所有聚合圓圈
@@ -182,9 +188,10 @@ export function useMultiLocationSearch(
     clustersRef.current.clear();
   }, []);
 
-  // 清理特定需求的圓圈
+  // 清理特定需求的圓圈和標記
   const clearRequirementCircles = useCallback((requirementId: RequirementType) => {
     const circlesToRemove: string[] = [];
+    const markersToRemove: string[] = [];
     
     circlesRef.current.forEach((circle, circleId) => {
       if (circleId.startsWith(`${requirementId}-`)) {
@@ -193,8 +200,19 @@ export function useMultiLocationSearch(
       }
     });
     
+    markersRef.current.forEach((marker, markerId) => {
+      if (markerId.startsWith(`${requirementId}-`)) {
+        marker.setMap(null);
+        markersToRemove.push(markerId);
+      }
+    });
+    
     circlesToRemove.forEach(circleId => {
       circlesRef.current.delete(circleId);
+    });
+    
+    markersToRemove.forEach(markerId => {
+      markersRef.current.delete(markerId);
     });
   }, []);
 
@@ -281,7 +299,7 @@ export function useMultiLocationSearch(
     }
 
     // 圓圈點擊事件
-    circle.addListener('click', (event: google.maps.MouseEvent) => {
+    circle.addListener('click', (event: any) => {
       if (cluster.count === 1) {
         // 單一地點顯示詳細資訊
         const location = cluster.locations[0];
@@ -366,19 +384,19 @@ export function useMultiLocationSearch(
     map.setZoom(optimalZoom);
   }, [map]);
 
-  // 創建單一需求的圓圈
+  // 創建單一需求的圓圈和中心標記
   const createRequirementCircle = useCallback((
     location: RequirementLocation, 
     requirementId: RequirementType
-  ): google.maps.Circle | null => {
+  ): { circle: google.maps.Circle | null; marker: google.maps.Marker | null } => {
     if (!map) {
       console.log(`❌ 地圖未初始化，無法創建 ${requirementId} 圓圈`);
-      return null;
+      return { circle: null, marker: null };
     }
 
     if (!location.location || typeof location.location.lat !== 'number' || typeof location.location.lng !== 'number') {
       console.error(`❌ ${requirementId} 地點 ${location.name} 無效的位置資料:`, location.location);
-      return null;
+      return { circle: null, marker: null };
     }
 
     const requirement = state.requirements[requirementId];
@@ -386,6 +404,7 @@ export function useMultiLocationSearch(
     
     console.log(`🔵 創建 ${requirement.displayName} 圓圈: ${location.name}`);
 
+    // 創建圓圈
     const circle = new google.maps.Circle({
       ...circleStyle,
       map,
@@ -393,8 +412,16 @@ export function useMultiLocationSearch(
       radius: circleRadius
     });
 
-    // 點擊事件
-    circle.addListener('click', () => {
+    // 創建中心標記
+    const marker = new google.maps.Marker({
+      position: { lat: location.location.lat, lng: location.location.lng },
+      map,
+      icon: createCenterMarkerIcon(requirementId, circleStyle.fillColor),
+      title: `${requirement.displayName}: ${location.name}`
+    });
+
+    // 點擊事件（圓圈和標記都可以觸發）
+    const openInfoWindow = () => {
       const infoWindow = new google.maps.InfoWindow({
         content: `
           <div style="padding: 8px; max-width: 200px;">
@@ -411,10 +438,65 @@ export function useMultiLocationSearch(
       });
       
       infoWindow.open(map);
-    });
+    };
 
-    return circle;
+    circle.addListener('click', openInfoWindow);
+    marker.addListener('click', openInfoWindow);
+
+    return { circle, marker };
   }, [map, circleRadius, state.requirements]);
+
+  // 創建中心標記圖示
+  const createCenterMarkerIcon = useCallback((
+    requirementId: RequirementType, 
+    fillColor: string
+  ): google.maps.Icon => {
+    const requirement = state.requirements[requirementId];
+    const size = 24;
+    
+    // 根據需求類型選擇圖示
+    const getIcon = (reqId: RequirementType) => {
+      switch (reqId) {
+        case 'starbucks': return '☕';
+        case 'gym': return '💪';
+        case 'convenience': return '🏪';
+        default: return '📍';
+      }
+    };
+
+    const icon = getIcon(requirementId);
+    
+    const svg = `
+      <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
+        <circle 
+          cx="${size/2}" 
+          cy="${size/2}" 
+          r="${size/2 - 2}" 
+          fill="${fillColor}" 
+          stroke="#ffffff" 
+          stroke-width="2"
+          opacity="0.9"
+        />
+        <text 
+          x="${size/2}" 
+          y="${size/2 + 4}" 
+          text-anchor="middle" 
+          font-family="Arial, sans-serif" 
+          font-size="12" 
+          font-weight="bold"
+        >${icon}</text>
+      </svg>
+    `;
+
+    const svgDataUrl = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+
+    return {
+      url: svgDataUrl,
+      size: new google.maps.Size(size, size),
+      scaledSize: new google.maps.Size(size, size),
+      anchor: new google.maps.Point(size/2, size/2)
+    };
+  }, [state.requirements]);
 
   // 更新單一需求的圓圈顯示（支援聚合）
   const updateRequirementCircles = useCallback((
@@ -503,11 +585,16 @@ export function useMultiLocationSearch(
       let successCount = 0;
       visibleLocations.forEach((location, index) => {
         const circleId = `${requirementId}-${location.id || index}`;
-        const circle = createRequirementCircle(location, requirementId);
+        const markerId = `${requirementId}-marker-${location.id || index}`;
+        const { circle, marker } = createRequirementCircle(location, requirementId);
         
         if (circle) {
           circlesRef.current.set(circleId, circle);
           successCount++;
+        }
+        
+        if (marker) {
+          markersRef.current.set(markerId, marker);
         }
       });
 
@@ -515,16 +602,96 @@ export function useMultiLocationSearch(
     }
   }, [map, state.requirements, clustering, clearRequirementCircles, clearRequirementClusterCircles, createRequirementCircle, createClusterCircle, handleClusterClick]);
 
-  // 更新所有圓圈
+  // 計算兩點間距離（Haversine 公式）
+  const calculateDistance = useCallback((lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    const R = 6371000; // 地球半徑（公尺）
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng/2) * Math.sin(dLng/2);
+    
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  }, []);
+
+  // 計算不同需求間的交集並篩選位置
+  const filterLocationsForIntersection = useCallback((
+    locations: RequirementLocation[], 
+    requirementId: RequirementType,
+    allRequirements: Record<RequirementType, SearchRequirement>
+  ): RequirementLocation[] => {
+    // 取得所有啟用且有資料的需求
+    const enabledRequirements = Object.entries(allRequirements)
+      .filter(([_, req]) => req.enabled && req.locations.length > 0)
+      .map(([id, _]) => id as RequirementType);
+
+    // 如果只有一個需求啟用，顯示該需求的所有位置
+    if (enabledRequirements.length <= 1) {
+      console.log(`📍 只有一個需求啟用，顯示 ${requirementId} 的所有位置`);
+      return locations;
+    }
+
+    // 多個需求時，只顯示與其他不同需求有交集的位置
+    console.log(`🔄 ${requirementId} 開始與其他需求的交集計算，比較 ${enabledRequirements.filter(id => id !== requirementId).length} 個不同需求`);
+
+    const intersectionLocations = locations.filter(location => {
+      if (!location.location) return false;
+
+      // 檢查此位置是否與其他不同需求的位置有交集
+      const hasIntersectionWithOtherRequirements = enabledRequirements
+        .filter(otherRequirementId => otherRequirementId !== requirementId) // 確保是不同需求
+        .some(otherRequirementId => {
+          const otherRequirement = allRequirements[otherRequirementId];
+          
+          return otherRequirement.locations.some(otherLocation => {
+            if (!otherLocation.location) return false;
+
+            // 計算與不同需求位置間的距離
+            const distance = calculateDistance(
+              location.location!.lat,
+              location.location!.lng,
+              otherLocation.location!.lat,
+              otherLocation.location!.lng
+            );
+
+            // 如果距離小於兩倍圓圈半徑，視為有交集
+            const intersectionThreshold = circleRadius * 2;
+            const hasIntersection = distance <= intersectionThreshold;
+            
+            if (hasIntersection) {
+              console.log(`🎯 發現交集: ${requirementId}的${location.name} 與 ${otherRequirementId}的${otherLocation.name} 距離${Math.round(distance)}m`);
+            }
+            
+            return hasIntersection;
+          });
+        });
+
+      return hasIntersectionWithOtherRequirements;
+    });
+
+    console.log(`🎯 ${requirementId} 與其他需求交集篩選結果: ${intersectionLocations.length} / ${locations.length} 個位置與其他需求有交集`);
+    return intersectionLocations;
+  }, [circleRadius, calculateDistance]);
+
+  // 更新所有圓圈（包含交集邏輯）
   const updateAllCircles = useCallback((currentBounds: MapBounds | null) => {
     Object.entries(state.requirements).forEach(([requirementId, requirement]) => {
+      // 先進行交集篩選
+      const intersectionFilteredLocations = filterLocationsForIntersection(
+        requirement.locations, 
+        requirementId as RequirementType,
+        state.requirements
+      );
+      
       updateRequirementCircles(
         requirementId as RequirementType, 
-        requirement.locations, 
+        intersectionFilteredLocations, 
         currentBounds
       );
     });
-  }, [state.requirements, updateRequirementCircles]);
+  }, [state.requirements, updateRequirementCircles, filterLocationsForIntersection]);
 
   // 穩定的搜尋需求引用
   const requirementsRef = useRef(state.requirements);
