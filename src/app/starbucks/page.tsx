@@ -10,7 +10,7 @@ import { APIProvider } from '@vis.gl/react-google-maps';
 import StarbucksMapContainer from '../../containers/StarbucksMapContainer';
 
 export default function StarbucksPage() {
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
 
   if (!apiKey) {
     return (
@@ -19,7 +19,7 @@ export default function StarbucksPage() {
           <div className="text-red-500 text-6xl mb-4">⚠️</div>
           <h2 className="text-xl font-bold text-gray-900 mb-2">API Key 未設定</h2>
           <p className="text-gray-600">
-            請在 .env.local 中設定 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+            請在 .env.local 中設定 NEXT_PUBLIC_GOOGLE_API_KEY
           </p>
         </div>
       </div>

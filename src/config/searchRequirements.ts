@@ -56,7 +56,7 @@ export const SEARCH_REQUIREMENTS: Record<RequirementType, RequirementConfig> = {
     query: 'ジム',
     displayName: '健身房',
     color: createColor('red', 'red-300', 'red-400'),
-    defaultEnabled: false
+    defaultEnabled: true
   },
   
   convenience: {
@@ -64,7 +64,7 @@ export const SEARCH_REQUIREMENTS: Record<RequirementType, RequirementConfig> = {
     query: 'コンビニ',
     displayName: '便利商店',
     color: createColor('green', 'green-300', 'green-400'),
-    defaultEnabled: false
+    defaultEnabled: true
   }
 };
 

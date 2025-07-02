@@ -208,10 +208,19 @@ function MapSearchLogic({ onStateChange }: { onStateChange: (data: any) => void 
     debounceDelay: 500
   });
 
+  // 穩定狀態傳遞
+  const stableSearchResult = React.useMemo(() => searchResult, [
+    searchResult.state.totalSearchCount,
+    searchResult.state.isAnyLoading,
+    searchResult.state.errorCount,
+    searchResult.stats.totalLocations,
+    searchResult.stats.visibleLocations
+  ]);
+
   // 將狀態傳遞給父組件
   React.useEffect(() => {
-    onStateChange({ ...searchResult, bounds });
-  }, [searchResult, bounds, onStateChange]);
+    onStateChange({ ...stableSearchResult, bounds });
+  }, [stableSearchResult, bounds, onStateChange]);
 
   // 這個組件只處理邏輯，不渲染任何 UI
   return null;
@@ -245,16 +254,19 @@ export function MultiSearchContainer() {
       
       {/* 地圖區域 */}
       <div className="flex-1 bg-white rounded-lg shadow-md overflow-hidden">
-        <Map
-          defaultCenter={DEFAULT_CENTER}
-          defaultZoom={DEFAULT_ZOOM}
-          gestureHandling="greedy"
-          disableDefaultUI={false}
-          style={{ width: '100%', height: '700px' }}
-          className="rounded-lg"
-        >
-          <MapSearchLogic onStateChange={handleStateChange} />
-        </Map>
+        <div style={{ width: '100%', height: '700px' }}>
+          <Map
+            defaultCenter={DEFAULT_CENTER}
+            defaultZoom={DEFAULT_ZOOM}
+            gestureHandling="greedy"
+            disableDefaultUI={false}
+            style={{ width: '100%', height: '100%' }}
+            className="w-full h-full"
+            mapId="multi-search-map"
+          >
+            <MapSearchLogic onStateChange={handleStateChange} />
+          </Map>
+        </div>
       </div>
     </div>
   );

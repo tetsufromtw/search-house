@@ -3,7 +3,7 @@
  * 支援同時搜尋多種類型的地點，並在地圖上顯示不同顏色的圓圈
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MapBounds, filterLocationsByBounds } from './useMapBoundsListener';
 import { 
   MultiLocationSearchState, 
@@ -299,12 +299,16 @@ export function useMultiLocationSearch(
     });
   }, [state.requirements, updateRequirementCircles]);
 
+  // 穩定的搜尋需求引用
+  const requirementsRef = useRef(state.requirements);
+  requirementsRef.current = state.requirements;
+
   // 搜尋單一需求
   const searchRequirement = useCallback(async (
     requirementId: RequirementType, 
     searchBounds: MapBounds
   ) => {
-    const requirement = state.requirements[requirementId];
+    const requirement = requirementsRef.current[requirementId];
     
     if (!requirement.enabled) {
       console.log(`⏭️ ${requirement.displayName} 已停用，跳過搜尋`);
@@ -387,7 +391,14 @@ export function useMultiLocationSearch(
         console.error(`${requirement.displayName} 搜尋錯誤:`, error);
       }
     }
-  }, [state.requirements, radius, maxPages, updateRequirement, updateRequirementCircles]);
+  }, [radius, maxPages, updateRequirement, updateRequirementCircles]);
+
+  // 穩定的啟用需求列表
+  const enabledRequirements = useMemo(() => {
+    return Object.keys(state.requirements).filter(
+      key => state.requirements[key as RequirementType].enabled
+    ) as RequirementType[];
+  }, [state.requirements]);
 
   // 搜尋所有啟用的需求
   const searchAllRequirements = useCallback(async (searchBounds: MapBounds) => {
@@ -402,13 +413,9 @@ export function useMultiLocationSearch(
 
     setState(prev => ({ ...prev, totalSearchCount: prev.totalSearchCount + 1 }));
 
-    const enabledRequirements = Object.keys(state.requirements).filter(
-      key => state.requirements[key as RequirementType].enabled
-    ) as RequirementType[];
-
     console.log('🚀 開始多需求搜尋:', {
       邊界: boundsKey,
-      啟用需求: enabledRequirements.map(id => state.requirements[id].displayName),
+      啟用需求: enabledRequirements.map(id => requirementsRef.current[id].displayName),
       並行搜尋: parallelSearch
     });
 
@@ -427,20 +434,30 @@ export function useMultiLocationSearch(
     }
 
     lastSearchBoundsRef.current = boundsKey;
-  }, [getBoundsKey, state.requirements, parallelSearch, searchRequirement]);
+  }, [getBoundsKey, enabledRequirements, parallelSearch, searchRequirement]);
+
+  // 穩定的邊界識別符
+  const stableBoundsKey = useMemo(() => {
+    return bounds ? getBoundsKey(bounds) : null;
+  }, [bounds, getBoundsKey]);
 
   // 監聽邊界變化
   useEffect(() => {
-    if (!bounds || !autoUpdate) return;
+    if (!bounds || !autoUpdate || !stableBoundsKey) return;
 
-    const boundsKey = getBoundsKey(bounds);
-    
     const timeoutId = setTimeout(() => {
       searchAllRequirements(bounds);
     }, debounceDelay);
 
     return () => clearTimeout(timeoutId);
-  }, [bounds ? getBoundsKey(bounds) : null, autoUpdate, debounceDelay, searchAllRequirements]);
+  }, [stableBoundsKey, autoUpdate, debounceDelay, bounds, searchAllRequirements]);
+
+  // 穩定的可見性狀態
+  const visibilityState = useMemo(() => ({
+    starbucks: state.requirements.starbucks.visible,
+    gym: state.requirements.gym.visible,
+    convenience: state.requirements.convenience.visible
+  }), [state.requirements.starbucks.visible, state.requirements.gym.visible, state.requirements.convenience.visible]);
 
   // 當需求狀態變化時更新圓圈
   useEffect(() => {
@@ -448,11 +465,10 @@ export function useMultiLocationSearch(
       updateAllCircles(bounds);
     }
   }, [
-    state.requirements.starbucks.visible,
-    state.requirements.gym.visible, 
-    state.requirements.convenience.visible,
-    bounds ? getBoundsKey(bounds) : null, 
-    updateAllCircles
+    visibilityState,
+    stableBoundsKey, 
+    updateAllCircles,
+    bounds
   ]);
 
   // 清理函數
