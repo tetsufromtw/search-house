@@ -111,6 +111,8 @@ export interface MultiLocationSearchOptions {
   debounceDelay?: number;
   /** 並行搜尋 */
   parallelSearch?: boolean;
+  /** 聚合配置 */
+  clustering?: ClusteringOptions;
 }
 
 /**
@@ -125,6 +127,38 @@ export interface SearchStats {
   locationsByRequirement: Record<RequirementType, number>;
   /** 各需求的可見地點數量 */
   visibleByRequirement: Record<RequirementType, number>;
+}
+
+/**
+ * 地圖聚合點 (Cluster)
+ */
+export interface LocationCluster {
+  /** 聚合點的唯一 ID */
+  id: string;
+  /** 聚合中心位置 */
+  center: { lat: number; lng: number };
+  /** 聚合內的地點列表 */
+  locations: RequirementLocation[];
+  /** 所屬的需求類型 */
+  requirementType: RequirementType;
+  /** 聚合內地點總數 */
+  count: number;
+  /** 聚合半徑 (公尺) */
+  radius: number;
+}
+
+/**
+ * 聚合配置選項
+ */
+export interface ClusteringOptions {
+  /** 啟用聚合的最小縮放等級 (小於此等級才聚合) */
+  clusterMinZoom: number;
+  /** 聚合距離閾值 (公尺) */
+  clusterDistance: number;
+  /** 最小聚合數量 (少於此數量不聚合) */
+  minClusterSize: number;
+  /** 最大聚合半徑 (公尺) */
+  maxClusterRadius: number;
 }
 
 /**

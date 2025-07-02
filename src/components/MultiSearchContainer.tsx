@@ -178,6 +178,31 @@ function ControlPanel({
         </div>
       </div>
       
+      {/* 聚合資訊 */}
+      <div className="mt-6 pt-6 border-t border-gray-200">
+        <h3 className="font-medium text-gray-900 mb-3">聚合模式</h3>
+        
+        <div className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-gray-600">聚合狀態:</span>
+            <span className={`font-medium px-2 py-1 rounded text-xs ${bounds && bounds.zoom < 14 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
+              {bounds && bounds.zoom < 14 ? '啟用' : '停用'}
+            </span>
+          </div>
+          
+          {bounds && (
+            <div className="flex justify-between">
+              <span className="text-gray-600">縮放等級:</span>
+              <span className="font-medium">{bounds.zoom.toFixed(1)}</span>
+            </div>
+          )}
+          
+          <div className="text-xs text-gray-500 mt-2 p-2 bg-gray-50 rounded">
+            💡 縮放等級 &lt; 14 時自動啟用聚合模式，點擊聚合圓圈可放大檢視
+          </div>
+        </div>
+      </div>
+      
       {/* 邊界資訊 */}
       {bounds && (
         <div className="mt-6 pt-6 border-t border-gray-200">

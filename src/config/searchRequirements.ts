@@ -139,6 +139,16 @@ export const ColorUtils = {
 };
 
 /**
+ * 預設的聚合配置
+ */
+export const DEFAULT_CLUSTERING_OPTIONS = {
+  clusterMinZoom: 14,      // 縮放等級小於 14 時啟用聚合
+  clusterDistance: 800,    // 800 公尺內的地點會被聚合
+  minClusterSize: 2,       // 至少 2 個地點才聚合
+  maxClusterRadius: 1200   // 最大聚合半徑 1200 公尺
+} as const;
+
+/**
  * 預設的搜尋選項
  */
 export const DEFAULT_SEARCH_OPTIONS = {
@@ -148,5 +158,6 @@ export const DEFAULT_SEARCH_OPTIONS = {
   autoUpdate: true,
   boundsExpansion: 0.1,
   debounceDelay: 300,
-  parallelSearch: true
+  parallelSearch: true,
+  clustering: DEFAULT_CLUSTERING_OPTIONS
 } as const;

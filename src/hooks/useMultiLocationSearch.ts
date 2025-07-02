@@ -12,14 +12,18 @@ import {
   RequirementType,
   RequirementLocation,
   SearchStats,
-  RequirementAction
+  RequirementAction,
+  LocationCluster,
+  ClusteringOptions
 } from '../types/multiLocationSearch';
 import { 
   SEARCH_REQUIREMENTS, 
   createDefaultRequirement, 
   DEFAULT_SEARCH_OPTIONS,
-  ColorUtils
+  ColorUtils,
+  DEFAULT_CLUSTERING_OPTIONS
 } from '../config/searchRequirements';
+import { ClusteringUtils } from '../utils/clustering';
 
 /**
  * 多需求地點搜尋 Hook
@@ -36,7 +40,8 @@ export function useMultiLocationSearch(
     autoUpdate = DEFAULT_SEARCH_OPTIONS.autoUpdate,
     boundsExpansion = DEFAULT_SEARCH_OPTIONS.boundsExpansion,
     debounceDelay = DEFAULT_SEARCH_OPTIONS.debounceDelay,
-    parallelSearch = DEFAULT_SEARCH_OPTIONS.parallelSearch
+    parallelSearch = DEFAULT_SEARCH_OPTIONS.parallelSearch,
+    clustering = DEFAULT_CLUSTERING_OPTIONS
   } = options;
 
   // 初始化狀態
@@ -57,6 +62,9 @@ export function useMultiLocationSearch(
 
   // Refs 避免依賴變化
   const circlesRef = useRef<Map<string, google.maps.Circle>>(new Map());
+  const clusterCirclesRef = useRef<Map<string, google.maps.Circle>>(new Map());
+  const clusterMarkersRef = useRef<Map<string, google.maps.Marker>>(new Map());
+  const clustersRef = useRef<Map<RequirementType, LocationCluster[]>>(new Map());
   const searchAbortControllersRef = useRef<Map<RequirementType, AbortController>>(new Map());
   const lastSearchBoundsRef = useRef<string | null>(null);
 
@@ -159,6 +167,21 @@ export function useMultiLocationSearch(
     circlesRef.current.clear();
   }, []);
 
+  // 清理所有聚合圓圈
+  const clearAllClusterCircles = useCallback(() => {
+    clusterCirclesRef.current.forEach(circle => {
+      circle.setMap(null);
+    });
+    clusterCirclesRef.current.clear();
+    
+    clusterMarkersRef.current.forEach(marker => {
+      marker.setMap(null);
+    });
+    clusterMarkersRef.current.clear();
+    
+    clustersRef.current.clear();
+  }, []);
+
   // 清理特定需求的圓圈
   const clearRequirementCircles = useCallback((requirementId: RequirementType) => {
     const circlesToRemove: string[] = [];
@@ -174,6 +197,174 @@ export function useMultiLocationSearch(
       circlesRef.current.delete(circleId);
     });
   }, []);
+
+  // 清理特定需求的聚合圓圈
+  const clearRequirementClusterCircles = useCallback((requirementId: RequirementType) => {
+    const circlesToRemove: string[] = [];
+    const markersToRemove: string[] = [];
+    
+    clusterCirclesRef.current.forEach((circle, circleId) => {
+      if (circleId.includes(`-${requirementId}-`)) {
+        circle.setMap(null);
+        circlesToRemove.push(circleId);
+      }
+    });
+    
+    clusterMarkersRef.current.forEach((marker, markerId) => {
+      if (markerId.includes(`-${requirementId}-`)) {
+        marker.setMap(null);
+        markersToRemove.push(markerId);
+      }
+    });
+    
+    circlesToRemove.forEach(circleId => {
+      clusterCirclesRef.current.delete(circleId);
+    });
+    
+    markersToRemove.forEach(markerId => {
+      clusterMarkersRef.current.delete(markerId);
+    });
+    
+    clustersRef.current.delete(requirementId);
+  }, []);
+
+  // 創建聚合圓圈
+  const createClusterCircle = useCallback((
+    cluster: LocationCluster,
+    onClusterClick?: (cluster: LocationCluster) => void
+  ): { circle: google.maps.Circle | null; marker: google.maps.Marker | null } => {
+    if (!map) {
+      console.log(`❌ 地圖未初始化，無法創建聚合圓圈`);
+      return { circle: null, marker: null };
+    }
+
+    const baseStyle = ColorUtils.getCircleStyle(cluster.requirementType);
+    
+    // 聚合點特殊樣式
+    const clusterStyle = {
+      ...baseStyle,
+      fillOpacity: cluster.count > 1 ? 0.3 : 0.2,
+      strokeWeight: cluster.count > 1 ? 3 : 2,
+      strokeOpacity: cluster.count > 1 ? 1.0 : 0.8
+    };
+
+    console.log(`🔗 創建 ${cluster.requirementType} 聚合圓圈: ${cluster.count} 個地點`);
+
+    // 建立聚合圓圈
+    const circle = new google.maps.Circle({
+      ...clusterStyle,
+      map,
+      center: cluster.center,
+      radius: cluster.count > 1 ? cluster.radius : 300,
+    });
+
+    let marker: google.maps.Marker | null = null;
+
+    // 只有多個地點才建立標記
+    if (cluster.count > 1) {
+      const markerIcon = createClusterMarkerIcon(cluster, baseStyle);
+      
+      marker = new google.maps.Marker({
+        position: cluster.center,
+        map,
+        icon: markerIcon,
+        title: ClusteringUtils.getClusterInfo(cluster),
+        zIndex: 1000
+      });
+
+      // 標記點擊事件
+      marker.addListener('click', () => {
+        if (onClusterClick) {
+          onClusterClick(cluster);
+        }
+      });
+    }
+
+    // 圓圈點擊事件
+    circle.addListener('click', (event: google.maps.MouseEvent) => {
+      if (cluster.count === 1) {
+        // 單一地點顯示詳細資訊
+        const location = cluster.locations[0];
+        
+        const infoWindow = new google.maps.InfoWindow({
+          content: `
+            <div style="padding: 12px; max-width: 250px;">
+              <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                <div style="width: 12px; height: 12px; background-color: ${baseStyle.fillColor}; border-radius: 50%; margin-right: 8px;"></div>
+                <span style="font-weight: bold; color: #1f2937;">${location.requirementId}</span>
+              </div>
+              <h4 style="margin: 0 0 8px 0; color: #1f2937; font-size: 16px;">${location.name || '未知地點'}</h4>
+              <p style="margin: 0 0 4px 0; color: #6b7280; font-size: 14px;">${location.address || '地址未提供'}</p>
+              ${location.rating ? `<p style="margin: 0; color: #f59e0b; font-size: 14px;">⭐ ${location.rating}</p>` : ''}
+            </div>
+          `,
+          position: event.latLng || cluster.center
+        });
+        
+        infoWindow.open(map);
+      } else {
+        // 多個地點，執行放大操作
+        if (onClusterClick) {
+          onClusterClick(cluster);
+        }
+      }
+    });
+
+    return { circle, marker };
+  }, [map]);
+
+  // 創建聚合標記圖示
+  const createClusterMarkerIcon = useCallback((
+    cluster: LocationCluster, 
+    baseStyle: any
+  ): google.maps.Icon => {
+    const size = Math.min(Math.max(30, cluster.count * 3), 60);
+    const label = ClusteringUtils.getClusterLabel(cluster);
+    
+    const svg = `
+      <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
+        <circle 
+          cx="${size/2}" 
+          cy="${size/2}" 
+          r="${size/2 - 2}" 
+          fill="${baseStyle.fillColor}" 
+          stroke="${baseStyle.strokeColor}" 
+          stroke-width="2"
+          opacity="0.9"
+        />
+        <text 
+          x="${size/2}" 
+          y="${size/2 + 4}" 
+          text-anchor="middle" 
+          font-family="Arial, sans-serif" 
+          font-size="${Math.max(10, size/4)}" 
+          font-weight="bold" 
+          fill="white"
+        >${label}</text>
+      </svg>
+    `;
+
+    const svgDataUrl = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+
+    return {
+      url: svgDataUrl,
+      size: new google.maps.Size(size, size),
+      scaledSize: new google.maps.Size(size, size),
+      anchor: new google.maps.Point(size/2, size/2)
+    };
+  }, []);
+
+  // 點擊聚合點放大地圖
+  const handleClusterClick = useCallback((cluster: LocationCluster) => {
+    if (!map) return;
+
+    const optimalZoom = ClusteringUtils.getOptimalZoomForCluster(cluster);
+    
+    console.log(`🔍 放大聚合點: ${cluster.count} 個地點，放大到等級 ${optimalZoom}`);
+    
+    map.panTo(cluster.center);
+    map.setZoom(optimalZoom);
+  }, [map]);
 
   // 創建單一需求的圓圈
   const createRequirementCircle = useCallback((
@@ -225,7 +416,7 @@ export function useMultiLocationSearch(
     return circle;
   }, [map, circleRadius, state.requirements]);
 
-  // 更新單一需求的圓圈顯示
+  // 更新單一需求的圓圈顯示（支援聚合）
   const updateRequirementCircles = useCallback((
     requirementId: RequirementType, 
     locations: RequirementLocation[], 
@@ -235,13 +426,15 @@ export function useMultiLocationSearch(
     
     if (!requirement.enabled || !requirement.visible) {
       clearRequirementCircles(requirementId);
+      clearRequirementClusterCircles(requirementId);
       return;
     }
 
     console.log(`🔄 更新 ${requirement.displayName} 圓圈:`, {
       地點數: locations.length,
       有邊界: !!currentBounds,
-      有地圖: !!map
+      有地圖: !!map,
+      縮放等級: currentBounds?.zoom
     });
 
     if (!map) {
@@ -251,6 +444,7 @@ export function useMultiLocationSearch(
 
     // 清理現有圓圈
     clearRequirementCircles(requirementId);
+    clearRequirementClusterCircles(requirementId);
 
     // 邊界篩選
     const locationsForFiltering = locations.map(loc => ({
@@ -273,20 +467,53 @@ export function useMultiLocationSearch(
 
     console.log(`📍 ${requirement.displayName} 篩選後可見: ${visibleLocations.length} / ${locations.length}`);
 
-    // 創建圓圈
-    let successCount = 0;
-    visibleLocations.forEach((location, index) => {
-      const circleId = `${requirementId}-${location.id || index}`;
-      const circle = createRequirementCircle(location, requirementId);
-      
-      if (circle) {
-        circlesRef.current.set(circleId, circle);
-        successCount++;
-      }
-    });
+    // 決定是否使用聚合
+    const shouldCluster = currentBounds ? 
+      ClusteringUtils.shouldEnableClustering(currentBounds.zoom, visibleLocations.length, clustering) :
+      false;
 
-    console.log(`🔵 ${requirement.displayName} 成功顯示: ${successCount} / ${visibleLocations.length} 個圓圈`);
-  }, [map, state.requirements, clearRequirementCircles, createRequirementCircle]);
+    if (shouldCluster) {
+      // 使用聚合模式
+      console.log(`🔗 ${requirement.displayName} 使用聚合模式 (縮放: ${currentBounds?.zoom})`);
+      
+      const clusters = ClusteringUtils.createLocationClusters(visibleLocations, requirementId, clustering);
+      clustersRef.current.set(requirementId, clusters);
+
+      let successCount = 0;
+      clusters.forEach((cluster, index) => {
+        const { circle, marker } = createClusterCircle(cluster, handleClusterClick);
+        
+        if (circle) {
+          const circleId = `cluster-circle-${requirementId}-${index}`;
+          clusterCirclesRef.current.set(circleId, circle);
+          successCount++;
+        }
+        
+        if (marker) {
+          const markerId = `cluster-marker-${requirementId}-${index}`;
+          clusterMarkersRef.current.set(markerId, marker);
+        }
+      });
+
+      console.log(`🔗 ${requirement.displayName} 成功顯示: ${successCount} / ${clusters.length} 個聚合圓圈`);
+    } else {
+      // 使用普通模式
+      console.log(`🔵 ${requirement.displayName} 使用普通模式 (縮放: ${currentBounds?.zoom})`);
+      
+      let successCount = 0;
+      visibleLocations.forEach((location, index) => {
+        const circleId = `${requirementId}-${location.id || index}`;
+        const circle = createRequirementCircle(location, requirementId);
+        
+        if (circle) {
+          circlesRef.current.set(circleId, circle);
+          successCount++;
+        }
+      });
+
+      console.log(`🔵 ${requirement.displayName} 成功顯示: ${successCount} / ${visibleLocations.length} 個圓圈`);
+    }
+  }, [map, state.requirements, clustering, clearRequirementCircles, clearRequirementClusterCircles, createRequirementCircle, createClusterCircle, handleClusterClick]);
 
   // 更新所有圓圈
   const updateAllCircles = useCallback((currentBounds: MapBounds | null) => {
@@ -475,12 +702,13 @@ export function useMultiLocationSearch(
   useEffect(() => {
     return () => {
       clearAllCircles();
+      clearAllClusterCircles();
       searchAbortControllersRef.current.forEach(controller => {
         controller.abort();
       });
       searchAbortControllersRef.current.clear();
     };
-  }, [clearAllCircles]);
+  }, [clearAllCircles, clearAllClusterCircles]);
 
   // 計算統計資訊
   const getStats = useCallback((): SearchStats => {
@@ -537,7 +765,8 @@ export function useMultiLocationSearch(
   const clearAll = useCallback(() => {
     updateRequirement({ type: 'CLEAR_ALL_LOCATIONS' });
     clearAllCircles();
-  }, [updateRequirement, clearAllCircles]);
+    clearAllClusterCircles();
+  }, [updateRequirement, clearAllCircles, clearAllClusterCircles]);
 
   return {
     // 狀態
@@ -555,6 +784,14 @@ export function useMultiLocationSearch(
     
     // 圓圈管理
     circles: Array.from(circlesRef.current.values()),
-    updateAllCircles: () => updateAllCircles(bounds)
+    clusterCircles: Array.from(clusterCirclesRef.current.values()),
+    clusterMarkers: Array.from(clusterMarkersRef.current.values()),
+    clusters: Array.from(clustersRef.current.values()).flat(),
+    updateAllCircles: () => updateAllCircles(bounds),
+    
+    // 聚合相關
+    isClusteringEnabled: bounds ? ClusteringUtils.shouldEnableClustering(bounds.zoom, getStats().totalLocations, clustering) : false,
+    clusteringOptions: clustering,
+    onClusterClick: handleClusterClick
   };
 }
