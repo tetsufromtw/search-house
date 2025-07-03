@@ -44,6 +44,12 @@ export class NewPlacesService {
   }
 
   async searchText(request: NewPlacesSearchRequest): Promise<NewPlacesResponse> {
+    console.log('🚨 新版 Places API 已停用避免費用:', request);
+    
+    // 🚨 緊急停用：避免高額 API 費用！
+    throw new Error('新版 Google Places API 已暫停使用避免高額費用。請使用模擬資料。');
+    
+    /*
     const url = `${this.baseUrl}/places:searchText`;
     
     const body = {
@@ -89,6 +95,7 @@ export class NewPlacesService {
       console.error('❌ 新版 Places API 請求失敗:', error);
       throw error;
     }
+    */
   }
 
   // 將新版 API 結果轉換為舊版格式 (兼容性)

@@ -296,6 +296,12 @@ export class GooglePlacesService implements IPlacesService {
   }
 
   private async makeRequest(url: string): Promise<any> {
+    console.log('🚨 Google API 請求已停用避免費用:', url);
+    
+    // 🚨 緊急停用：避免高額 API 費用！
+    throw new Error('Google Places API 已暫停使用避免高額費用。請使用模擬資料。');
+    
+    /*
     console.log('🌐 Google API 請求 URL:', url);
     
     const response = await fetch(url);
@@ -320,6 +326,7 @@ export class GooglePlacesService implements IPlacesService {
     }
 
     return jsonResult;
+    */
   }
 
   private adaptTextSearchResponse(googleResponse: any): PlaceSearchResponse {

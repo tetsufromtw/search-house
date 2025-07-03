@@ -20,7 +20,7 @@ export interface RequirementCircle {
   colorIndex: number;
 }
 
-// 寫死的需求搜尋結果（模擬 Google Places API）
+// 🎯 豐富的模擬資料（避免 Google API 費用）
 const MOCK_PLACES_DATA: { [key: string]: PlaceResult[] } = {
   'anytime fitness': [
     {
@@ -61,6 +61,82 @@ const MOCK_PLACES_DATA: { [key: string]: PlaceResult[] } = {
       location: { lat: 35.7090, lng: 139.7740 },
       address: '東京都台東区上野6-16-16',
       rating: 3.9,
+      types: ['gym', 'health']
+    },
+    {
+      place_id: 'anytime_6',
+      name: 'Anytime Fitness 中野店',
+      location: { lat: 35.7056, lng: 139.6659 },
+      address: '東京都中野区中野2-13-7',
+      rating: 4.0,
+      types: ['gym', 'health']
+    },
+    {
+      place_id: 'anytime_7',
+      name: 'Anytime Fitness 錦糸町店',
+      location: { lat: 35.6969, lng: 139.8148 },
+      address: '東京都墨田区錦糸2-4-1',
+      rating: 3.8,
+      types: ['gym', 'health']
+    }
+  ],
+  'gym': [
+    {
+      place_id: 'gym_gold_1',
+      name: 'ゴールドジム 東京ベイ有明店',
+      location: { lat: 35.6367, lng: 139.7947 },
+      address: '東京都江東区有明1-5-22',
+      rating: 4.4,
+      types: ['gym', 'health']
+    },
+    {
+      place_id: 'gym_central_1',
+      name: 'セントラルスポーツ 新宿店',
+      location: { lat: 35.6911, lng: 139.7018 },
+      address: '東京都新宿区新宿2-1-1',
+      rating: 4.1,
+      types: ['gym', 'health']
+    },
+    {
+      place_id: 'gym_tipness_1',
+      name: 'ティップネス 渋谷店',
+      location: { lat: 35.6584, lng: 139.7016 },
+      address: '東京都渋谷区渋谷1-23-16',
+      rating: 4.0,
+      types: ['gym', 'health']
+    },
+    {
+      place_id: 'gym_renaissance_1',
+      name: 'ルネサンス 両国店',
+      location: { lat: 35.6959, lng: 139.7936 },
+      address: '東京都墨田区両国2-10-14',
+      rating: 3.9,
+      types: ['gym', 'health']
+    }
+  ],
+  '健身房': [
+    {
+      place_id: 'gym_gold_1',
+      name: 'ゴールドジム 東京ベイ有明店',
+      location: { lat: 35.6367, lng: 139.7947 },
+      address: '東京都江東区有明1-5-22',
+      rating: 4.4,
+      types: ['gym', 'health']
+    },
+    {
+      place_id: 'gym_central_1',
+      name: 'セントラルスポーツ 新宿店',
+      location: { lat: 35.6911, lng: 139.7018 },
+      address: '東京都新宿区新宿2-1-1',
+      rating: 4.1,
+      types: ['gym', 'health']
+    },
+    {
+      place_id: 'anytime_1',
+      name: 'Anytime Fitness 新宿店',
+      location: { lat: 35.6938, lng: 139.7036 },
+      address: '東京都新宿区新宿3-1-13',
+      rating: 4.2,
       types: ['gym', 'health']
     }
   ],
@@ -272,10 +348,44 @@ const fetchPlacesPage = async (
 // 延遲函數（Google API 需要等待 token 生效）
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// 使用全新版 Places API (New) 搜尋地點（支援分頁和動態範圍）
+// 智慧搜尋地點：OSM 優先，Google API 備用
 export const searchPlaces = async (query: string, bounds?: MapBounds): Promise<PlaceResult[]> => {
   console.log(`🔍 開始搜尋: "${query}"${bounds ? ' (使用地圖範圍)' : ' (使用預設範圍)'}`);
 
+  // 檢查是否強制使用模擬資料
+  if (process.env.NEXT_PUBLIC_FORCE_MOCK_MODE === 'true') {
+    console.log('🎭 強制模擬模式：使用假資料');
+    return getMockPlaces(query);
+  }
+
+  // 嘗試使用 OSM 資料 (免費)
+  try {
+    console.log('🗺️ 嘗試使用 OSM 資料 (免費)');
+    const osmResults = await searchWithOSM(query, bounds);
+    
+    if (osmResults.length > 0) {
+      console.log(`✅ OSM 找到 ${osmResults.length} 個地點`);
+      return osmResults;
+    } else {
+      console.log('⚠️ OSM 沒有找到結果，回退到模擬資料');
+      return getMockPlaces(query);
+    }
+  } catch (error) {
+    console.error('❌ OSM 查詢失敗:', error);
+    console.log('🔄 回退到模擬資料');
+    return getMockPlaces(query);
+  }
+
+  /* 
+  // Google API 已停用，避免費用
+  // 🚨 緊急修復：強制使用模擬資料，避免 Google API 費用
+  console.log('💰 為避免高額費用，強制使用模擬資料');
+  console.log('📝 如需啟用真實 API，請設定 NEXT_PUBLIC_FORCE_MOCK_MODE=false 並確認預算控制');
+  return getMockPlaces(query);
+  */
+
+  /* 
+  // 真實 API 呼叫已暫停，避免費用
   try {
     // 檢查是否在瀏覽器環境
     if (typeof window === 'undefined') {
@@ -324,6 +434,7 @@ export const searchPlaces = async (query: string, bounds?: MapBounds): Promise<P
     console.log('🔄 回退到模擬資料');
     return getMockPlaces(query);
   }
+  */
 };
 
 // 根據查詢確定地點類型
@@ -345,15 +456,100 @@ const getPlaceType = (query: string): string => {
 const getMockPlaces = (query: string): PlaceResult[] => {
   const normalizedQuery = query.toLowerCase();
 
-  if (normalizedQuery.includes('anytime') || normalizedQuery.includes('fitness')) {
+  console.log(`🎭 模擬資料搜尋: "${query}" -> "${normalizedQuery}"`);
+
+  // 健身房相關搜尋
+  if (normalizedQuery.includes('anytime') && normalizedQuery.includes('fitness')) {
+    console.log('✅ 匹配: Anytime Fitness');
     return MOCK_PLACES_DATA['anytime fitness'];
-  } else if (normalizedQuery.includes('starbucks') || normalizedQuery.includes('スターバックス')) {
+  } else if (normalizedQuery.includes('gym') || normalizedQuery.includes('健身房') || 
+             normalizedQuery.includes('fitness') || normalizedQuery.includes('ジム')) {
+    console.log('✅ 匹配: 健身房');
+    return MOCK_PLACES_DATA['gym'];
+  }
+  
+  // 咖啡店相關搜尋
+  else if (normalizedQuery.includes('starbucks') || normalizedQuery.includes('スターバックス') ||
+           normalizedQuery.includes('星巴克')) {
+    console.log('✅ 匹配: Starbucks');
     return MOCK_PLACES_DATA['starbucks'];
-  } else if (normalizedQuery.includes('コンビニ') || normalizedQuery.includes('convenience')) {
+  }
+  
+  // 便利商店相關搜尋
+  else if (normalizedQuery.includes('コンビニ') || normalizedQuery.includes('convenience') ||
+           normalizedQuery.includes('便利商店') || normalizedQuery.includes('711') ||
+           normalizedQuery.includes('seven') || normalizedQuery.includes('familymart') ||
+           normalizedQuery.includes('lawson')) {
+    console.log('✅ 匹配: 便利商店');
     return MOCK_PLACES_DATA['コンビニ'];
   }
-
+  
+  console.log('❌ 無匹配的模擬資料');
   return [];
+};
+
+// 使用 OSM 資料搜尋 (免費)
+const searchWithOSM = async (query: string, bounds?: MapBounds): Promise<PlaceResult[]> => {
+  console.log(`🗺️ OSM 搜尋: "${query}"`);
+
+  try {
+    // 如果沒有提供邊界，使用東京中心區域
+    const searchBounds = bounds || {
+      north: 35.7,
+      south: 35.65,
+      east: 139.8,
+      west: 139.65
+    };
+
+    // 呼叫 OSM 搜尋 API
+    const response = await fetch('/api/osm-search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        requirements: [query],
+        center: {
+          lat: (searchBounds.north + searchBounds.south) / 2,
+          lng: (searchBounds.east + searchBounds.west) / 2
+        },
+        searchRadius: 2000, // 2km 搜尋半徑
+        intersectionRadius: 500
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`OSM API 錯誤: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    if (!data.success || !data.data.stores[query]) {
+      console.log('⚠️ OSM 沒有找到該需求的結果');
+      return [];
+    }
+
+    // 轉換 OSM 結果為 PlaceResult 格式
+    const osmLocations = data.data.stores[query].locations;
+    const placeResults: PlaceResult[] = osmLocations.map((location: any, index: number) => ({
+      place_id: location.id,
+      name: location.name,
+      location: {
+        lat: location.lat,
+        lng: location.lng
+      },
+      address: location.address || '',
+      rating: location.rating,
+      types: location.types || ['establishment']
+    }));
+
+    console.log(`✅ OSM 轉換完成: ${placeResults.length} 個地點`);
+    return placeResults;
+
+  } catch (error) {
+    console.error('❌ OSM 搜尋失敗:', error);
+    throw error;
+  }
 };
 
 // 根據需求建立圓圈資料（即時回調版本，支援動態範圍）

@@ -8,6 +8,17 @@ export async function GET(request: NextRequest) {
   try {
     const apiKey = process.env.GOOGLE_API_KEY;
     
+    console.log('🧪 測試 Google Places API - 已停用避免費用');
+    
+    // 🚨 緊急停用：避免高額 API 費用！
+    return NextResponse.json({
+      message: '⚠️ Google API 測試已停用避免高額費用',
+      api_key_exists: !!apiKey,
+      api_key_prefix: apiKey ? `${apiKey.substring(0, 6)}...` : '未設定',
+      warning: '請使用模擬資料進行開發'
+    });
+    
+    /*
     console.log('🧪 測試 Google Places API');
     console.log('🔑 API Key:', apiKey ? `${apiKey.substring(0, 10)}...` : '未設定');
     
@@ -15,9 +26,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         error: 'API Key 未設定'
       }, { status: 500 });
-    }
+    }*/
 
-    // 測試多個 API
+    /*
+    // 所有 API 測試已停用避免費用
     const tests = [
       {
         name: 'Geocoding API',
@@ -95,6 +107,7 @@ export async function GET(request: NextRequest) {
       api_key_prefix: apiKey.substring(0, 10),
       test_results: results
     });
+    */
 
   } catch (error) {
     console.error('❌ 測試錯誤:', error);
