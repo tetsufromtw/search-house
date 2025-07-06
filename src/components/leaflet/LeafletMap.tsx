@@ -6,23 +6,14 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-
-// 修復 Leaflet 圖示問題 (Next.js)
-delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-});
 
 interface LeafletMapProps {
   center?: [number, number];
   zoom?: number;
   className?: string;
-  onMapReady?: (map: L.Map) => void;
-  onBoundsChange?: (bounds: L.LatLngBounds) => void;
+  onMapReady?: (map: any) => void;
+  onBoundsChange?: (bounds: any) => void;
   children?: React.ReactNode;
 }
 
@@ -42,7 +33,7 @@ export default function LeafletMap({
   children
 }: LeafletMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<L.Map | null>(null);
+  const mapInstanceRef = useRef<any>(null);
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -54,41 +45,56 @@ export default function LeafletMap({
 
     console.log('🗺️ 初始化 Leaflet 地圖');
 
-    // 建立地圖實例
-    const map = L.map(mapRef.current, {
-      center,
-      zoom,
-      zoomControl: true,
-      attributionControl: true
-    });
-
-    // 新增 OpenStreetMap 圖層
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-      maxZoom: 19,
-      minZoom: 3
-    }).addTo(map);
-
-    mapInstanceRef.current = map;
-
-    // 通知父元件地圖已準備好
-    if (onMapReady) {
-      onMapReady(map);
-    }
-
-    // 邊界變化監聽器
-    if (onBoundsChange) {
-      const handleMoveEnd = () => {
-        const bounds = map.getBounds();
-        onBoundsChange(bounds);
-      };
-
-      map.on('moveend', handleMoveEnd);
-      map.on('zoomend', handleMoveEnd);
+    // 動態載入 Leaflet
+    const initMap = async () => {
+      const L = (await import('leaflet')).default;
       
-      // 初始邊界
-      handleMoveEnd();
-    }
+      // 修復 Leaflet 圖示問題 (Next.js)
+      delete (L.Icon.Default.prototype as any)._getIconUrl;
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+        iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+      });
+
+      // 建立地圖實例
+      const map = L.map(mapRef.current!, {
+        center,
+        zoom,
+        zoomControl: true,
+        attributionControl: true
+      });
+
+      // 新增 OpenStreetMap 圖層
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19,
+        minZoom: 3
+      }).addTo(map);
+
+      mapInstanceRef.current = map;
+
+      // 通知父元件地圖已準備好
+      if (onMapReady) {
+        onMapReady(map);
+      }
+
+      // 邊界變化監聽器
+      if (onBoundsChange) {
+        const handleMoveEnd = () => {
+          const bounds = map.getBounds();
+          onBoundsChange(bounds);
+        };
+
+        map.on('moveend', handleMoveEnd);
+        map.on('zoomend', handleMoveEnd);
+        
+        // 初始邊界
+        handleMoveEnd();
+      }
+    };
+
+    initMap();
 
     // 清理函數
     return () => {
@@ -120,18 +126,18 @@ export default function LeafletMap({
  * 圓圈管理器 - 處理需求圓圈的顯示
  */
 export class LeafletCircleManager {
-  private map: L.Map;
-  private circles: Map<string, L.Circle> = new Map();
-  private markers: Map<string, L.Marker> = new Map();
+  private map: any;
+  private circles: Map<string, any> = new Map();
+  private markers: Map<string, any> = new Map();
 
-  constructor(map: L.Map) {
+  constructor(map: any) {
     this.map = map;
   }
 
   /**
    * 新增需求圓圈
    */
-  addRequirementCircle(
+  async addRequirementCircle(
     id: string,
     center: [number, number],
     radius: number,
@@ -140,6 +146,8 @@ export class LeafletCircleManager {
     locations: Array<{ lat: number; lng: number; name: string }>
   ) {
     console.log(`🎯 新增需求圓圈: ${displayName}`, { center, radius, color, locationCount: locations.length });
+
+    const L = (await import('leaflet')).default;
 
     // 移除現有圓圈
     this.removeCircle(id);
@@ -200,13 +208,15 @@ export class LeafletCircleManager {
   /**
    * 新增交集區域
    */
-  addIntersectionArea(
+  async addIntersectionArea(
     id: string,
     center: [number, number],
     radius: number,
     requirements: string[]
   ) {
     console.log(`🎯 新增交集區域:`, { center, radius, requirements });
+
+    const L = (await import('leaflet')).default;
 
     // 移除現有交集
     this.removeCircle(`intersection_${id}`);
@@ -344,16 +354,17 @@ export class LeafletCircleManager {
   /**
    * 獲取所有圓圈
    */
-  getAllCircles(): Map<string, L.Circle> {
+  getAllCircles(): Map<string, any> {
     return new Map(this.circles);
   }
 
   /**
    * 適應所有圓圈的邊界
    */
-  fitAllCircles() {
+  async fitAllCircles() {
     if (this.circles.size === 0) return;
 
+    const L = (await import('leaflet')).default;
     const group = L.featureGroup(Array.from(this.circles.values()));
     this.map.fitBounds(group.getBounds(), { padding: [20, 20] });
   }
@@ -362,7 +373,7 @@ export class LeafletCircleManager {
 /**
  * 輔助函數：Leaflet 邊界轉換為標準格式
  */
-export function leafletBoundsToMapBounds(bounds: L.LatLngBounds): MapBounds {
+export function leafletBoundsToMapBounds(bounds: any): MapBounds {
   return {
     north: bounds.getNorth(),
     south: bounds.getSouth(),

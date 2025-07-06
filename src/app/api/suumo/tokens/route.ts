@@ -14,7 +14,8 @@ export async function GET() {
       tokens: {
         UID: tokens.bkApi.UID,
         STMP: tokens.bkApi.STMP,
-        ATT: `${tokens.bkApi.ATT.substring(0, 20)}...` // 僅顯示前20字符，保護完整token
+        ATT: tokens.bkApi.ATT, // 返回完整 token
+        url: tokens.bkApi.url
       },
       cache: cacheStatus,
       health: healthCheck,
@@ -44,7 +45,8 @@ export async function POST() {
       tokens: {
         UID: tokens.bkApi.UID,
         STMP: tokens.bkApi.STMP,
-        ATT: `${tokens.bkApi.ATT.substring(0, 20)}...`
+        ATT: tokens.bkApi.ATT, // 返回完整 token
+        url: tokens.bkApi.url
       },
       health: healthCheck,
       message: 'Token 已強制刷新',
@@ -75,7 +77,8 @@ export async function DELETE() {
       tokens: {
         UID: tokens.bkApi.UID,
         STMP: tokens.bkApi.STMP,
-        ATT: `${tokens.bkApi.ATT.substring(0, 20)}...`
+        ATT: tokens.bkApi.ATT, // 返回完整 token
+        url: tokens.bkApi.url
       },
       timestamp: new Date().toISOString()
     });

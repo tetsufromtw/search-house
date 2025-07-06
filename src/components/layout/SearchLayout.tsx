@@ -38,6 +38,33 @@ export default function SearchLayout({
                   零費用
                 </span>
               </Link>
+              <Link 
+                href="/suumo-intersection-test" 
+                className="text-gray-600 hover:text-orange-600 transition-colors flex items-center gap-1"
+              >
+                🏠 SUUMO測試
+                <span className="px-1.5 py-0.5 bg-orange-100 text-orange-700 text-xs rounded">
+                  今日重點
+                </span>
+              </Link>
+              <Link 
+                href="/analyze-suumo" 
+                className="text-gray-600 hover:text-purple-600 transition-colors flex items-center gap-1"
+              >
+                🔍 頁面分析
+                <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 text-xs rounded">
+                  新功能
+                </span>
+              </Link>
+              <Link 
+                href="/suumo-modular-test" 
+                className="text-gray-600 hover:text-indigo-600 transition-colors flex items-center gap-1"
+              >
+                🧩 模組化 API
+                <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-700 text-xs rounded">
+                  工具化
+                </span>
+              </Link>
             </div>
           </div>
           

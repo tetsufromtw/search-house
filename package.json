@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:suumo": "node src/scripts/test-suumo-system.js"
   },
   "dependencies": {
     "@googlemaps/js-api-loader": "^1.16.10",

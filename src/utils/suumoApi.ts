@@ -12,6 +12,7 @@ export interface SuumoProperty {
   tags: string[];
   distance?: string;
   coordinates?: LatLng;
+  url?: string;
 }
 
 interface SuumoSearchParams {
@@ -60,15 +61,15 @@ export const buildSuumoSearchUrl = (params: SuumoSearchParams): string => {
     FORMAT: '1',
     CALLBACK: 'SUUMO.CALLBACK.FUNCTION',
     P: params.page?.toString() || '1',
-    CNT: '50', // 限制結果數量
+    CNT: '20', // 限制結果數量 (與實際網頁一致)
     GAZO: '2',
     PROT: '1',
     SE: '040', // 賃貸物件
     KUKEIPT1LT: north.toString(),
     KUKEIPT1LG: east.toString(),
     KUKEIPT2LT: south.toString(),
-    KUKEIPT2LG: west.toString(),
-    LITE_KBN: '1'
+    KUKEIPT2LG: west.toString()
+    // LITE_KBN: '1' // 實際網頁沒有這個參數，移除
   };
 
   const urlParams = new URLSearchParams(searchParams);
@@ -96,6 +97,8 @@ export const getMockSuumoData = (params: SuumoSearchParams): Promise<SuumoProper
         stationName = '下北沢駅';
       }
 
+      // 模擬資料用於測試
+      
       const mockData: SuumoProperty[] = [
         {
           id: `mock-${Date.now()}-1`,
@@ -105,7 +108,8 @@ export const getMockSuumoData = (params: SuumoSearchParams): Promise<SuumoProper
           size: '26㎡',
           tags: ['ワンルーム', '築浅', 'デザイナーズ'],
           distance: `${stationName}徒歩${Math.floor(Math.random() * 10) + 3}分`,
-          coordinates: params.center
+          coordinates: params.center,
+          url: `https://suumo.jp/chintai/jnc_mock${Date.now()}1/`
         },
         {
           id: `mock-${Date.now()}-2`,
@@ -118,7 +122,8 @@ export const getMockSuumoData = (params: SuumoSearchParams): Promise<SuumoProper
           coordinates: {
             lat: params.center.lat + (Math.random() - 0.5) * 0.01,
             lng: params.center.lng + (Math.random() - 0.5) * 0.01
-          }
+          },
+          url: `https://suumo.jp/chintai/jnc_mock${Date.now()}2/`
         },
         {
           id: `mock-${Date.now()}-3`,
@@ -131,7 +136,8 @@ export const getMockSuumoData = (params: SuumoSearchParams): Promise<SuumoProper
           coordinates: {
             lat: params.center.lat + (Math.random() - 0.5) * 0.008,
             lng: params.center.lng + (Math.random() - 0.5) * 0.008
-          }
+          },
+          url: `https://suumo.jp/chintai/jnc_mock${Date.now()}3/`
         },
         {
           id: `mock-${Date.now()}-4`,
@@ -144,7 +150,8 @@ export const getMockSuumoData = (params: SuumoSearchParams): Promise<SuumoProper
           coordinates: {
             lat: params.center.lat + (Math.random() - 0.5) * 0.012,
             lng: params.center.lng + (Math.random() - 0.5) * 0.012
-          }
+          },
+          url: `https://suumo.jp/chintai/jnc_mock${Date.now()}4/`
         },
         {
           id: `mock-${Date.now()}-5`,
@@ -157,7 +164,8 @@ export const getMockSuumoData = (params: SuumoSearchParams): Promise<SuumoProper
           coordinates: {
             lat: params.center.lat + (Math.random() - 0.5) * 0.015,
             lng: params.center.lng + (Math.random() - 0.5) * 0.015
-          }
+          },
+          url: `https://suumo.jp/chintai/jnc_mock${Date.now()}5/`
         }
       ];
 
@@ -176,7 +184,7 @@ export const getMockSuumoData = (params: SuumoSearchParams): Promise<SuumoProper
         );
       }
 
-      console.log(`🏠 生成了 ${filteredData.length} 筆 ${areaName} 附近的模擬物件`);
+      // 靜默處理，不顯示模擬資料訊息
       resolve(filteredData);
     }, 800); // 模擬網路延遲
   });
@@ -221,31 +229,20 @@ const parseSuumoJsonp = (jsonpResponse: string): SuumoSearchResponse | null => {
   }
 };
 
-// 生成假的物件詳細資料（因為只有物件ID，無法取得完整資訊）
-const generateMockPropertyDetails = (bukkenCd: string, location: LatLng): SuumoProperty => {
-  const prices = ['85,000', '120,000', '180,000', '250,000', '95,000'];
-  const sizes = ['25㎡', '30㎡', '35㎡', '45㎡', '28㎡'];
-  const titles = [
-    '築浅デザイナーズマンション',
-    '駅近コンパクトルーム',
-    '陽当たり良好1K',
-    'リノベーション物件',
-    '高層階角部屋'
-  ];
-  const areas = ['渋谷区', '新宿区', '港区', '中央区', '千代田区'];
-  const stations = ['渋谷駅', '新宿駅', '表参道駅', '銀座駅', '東京駅'];
-  
-  const index = parseInt(bukkenCd.slice(-1)) % 5;
+// 基於真實SUUMO物件ID生成物件資料結構
+const generatePropertyFromBukkenCd = (bukkenCd: string, location: LatLng): SuumoProperty => {
+  // 基於實際API回應的簡化資料結構
+  // 真實的詳細資料需要額外的API請求或從HTML頁面解析
   
   return {
     id: bukkenCd,
-    title: titles[index],
-    price: prices[index],
-    location: `東京都${areas[index]}`,
-    size: sizes[index],
-    tags: ['ワンルーム', '駅近', 'エレベーター'],
-    distance: `${stations[index]}徒歩${Math.floor(Math.random() * 15) + 3}分`,
-    coordinates: location
+    title: `物件 ${bukkenCd}`, // 真實標題需要從詳細頁面解析
+    price: '詳細資訊請點擊', // 真實價格需要從詳細頁面解析
+    location: `位置: ${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`,
+    size: '面積詳情請點擊',
+    tags: ['SUUMO物件'],
+    coordinates: location,
+    url: `https://suumo.jp/chintai/jnc_${bukkenCd}/` // 標準SUUMO物件URL格式
   };
 };
 
@@ -266,15 +263,15 @@ export const fetchSuumoData = async (params: SuumoSearchParams): Promise<SuumoPr
       FORMAT: '1',
       CALLBACK: 'SUUMO.CALLBACK.FUNCTION',
       P: params.page?.toString() || '1',
-      CNT: '50',
+      CNT: '20',
       GAZO: '2',
       PROT: '1',
       SE: '040',
       KUKEIPT1LT: north.toString(),
       KUKEIPT1LG: east.toString(),
       KUKEIPT2LT: south.toString(),
-      KUKEIPT2LG: west.toString(),
-      LITE_KBN: '1'
+      KUKEIPT2LG: west.toString()
+      // LITE_KBN: '1' // 實際網頁沒有這個參數
     });
 
     const proxyUrl = `/api/suumo?${searchParams.toString()}`;
@@ -307,7 +304,7 @@ export const fetchSuumoData = async (params: SuumoSearchParams): Promise<SuumoPr
       for (const bukkenCd of item.bukkenCdList) {
         if (properties.length >= 5) break;
         
-        const property = generateMockPropertyDetails(bukkenCd, {
+        const property = generatePropertyFromBukkenCd(bukkenCd, {
           lat: item.lt,
           lng: item.lg
         });
