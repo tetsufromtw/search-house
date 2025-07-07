@@ -90,6 +90,9 @@ export default function LeafletHomepage() {
   const [isSearching, setIsSearching] = useState(false);
   const [mapCenter] = useState<[number, number]>([35.6762, 139.6503]);
 
+  // 地圖容器 ref 用於截圖
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+
   /**
    * 地圖準備就緒回調
    */
@@ -426,81 +429,105 @@ export default function LeafletHomepage() {
           </div>
         </div>
 
-        {/* 地圖與結果區域 */}
-        <div className="flex gap-6">
-          {/* 地圖區域 */}
-          <div className="flex-1 bg-white rounded-lg shadow-md overflow-hidden">
-            <LeafletMap
-              center={mapCenter}
-              zoom={13}
-              className="w-full h-[600px]"
-              onMapReady={handleMapReady}
-            />
+      </div>
+
+      {/* 主要內容區域 - 全寬度固定高度布局 */}
+      <div className="w-full px-4">
+        <div className="grid grid-cols-11 gap-4 h-[600px]">
+          {/* 左側廣告區 - 1/11 */}
+          <div className="col-span-1 bg-gray-100 rounded-lg shadow-md flex items-center justify-center">
+            <div className="text-gray-400 text-xs text-center transform -rotate-90 whitespace-nowrap">
+              廣告位置
+            </div>
           </div>
 
-          {/* 右側結果區域 */}
-          <div className="w-80 space-y-4">
+          {/* 篩選條件區 - 2/11 */}
+          <div className="col-span-2 bg-white rounded-lg shadow-md p-4 overflow-y-auto">
+            <h3 className="font-semibold text-lg mb-3 text-gray-900">🔧 篩選條件</h3>
+            
             {/* 交集區域資訊 */}
-            {intersectionAreas.length > 0 && (
-              <div className="bg-white rounded-lg shadow-md p-4">
-                <h3 className="font-semibold text-lg mb-3">🎯 交集區域</h3>
+            <div className="mb-4">
+              <h4 className="font-medium text-gray-700 mb-2">🎯 交集區域</h4>
+              {intersectionAreas.length > 0 ? (
                 <div className="space-y-2">
                   {intersectionAreas.slice(0, 3).map((area, index) => (
-                    <div key={area.id} className="p-3 bg-orange-50 rounded text-sm">
+                    <div key={area.id} className="p-2 bg-orange-50 rounded text-xs">
                       <div className="font-medium">區域 {index + 1}</div>
-                      <div className="text-gray-600">
-                        半徑: {area.radius}m
-                      </div>
-                      <div className="text-gray-600">
-                        分數: {area.score.toFixed(1)}
-                      </div>
+                      <div className="text-gray-600">半徑: {area.radius}m</div>
+                      <div className="text-gray-600">分數: {area.score.toFixed(1)}</div>
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
-
-            {/* 租屋物件 */}
-            {properties.length > 0 && (
-              <div className="bg-white rounded-lg shadow-md p-4">
-                <h3 className="font-semibold text-lg mb-3">🏠 租屋物件 (前5個)</h3>
-                <div className="space-y-3">
-                  {properties.map((property, index) => (
-                    <div 
-                      key={property.id} 
-                      className="p-3 bg-green-50 rounded text-sm cursor-pointer hover:bg-green-100 transition-colors"
-                      onClick={() => {
-                        if (property.url) {
-                          console.log('🔗 開啟 SUUMO 物件頁面:', property.url);
-                          window.open(property.url, '_blank', 'noopener,noreferrer');
-                        }
-                      }}
-                    >
-                      <div className="font-medium text-green-800">{property.title}</div>
-                      <div className="text-green-700 font-semibold">{property.price}</div>
-                      <div className="text-gray-600">{property.location}</div>
-                      {property.size && (
-                        <div className="text-gray-500 text-xs">面積: {property.size}</div>
-                      )}
-                      {property.url && (
-                        <div className="text-blue-600 text-xs mt-1">點擊查看詳情 →</div>
-                      )}
-                    </div>
-                  ))}
+              ) : (
+                <div className="p-2 bg-gray-50 rounded text-xs text-gray-500">
+                  尚無交集區域
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* 搜尋說明 */}
-            <div className="bg-blue-50 rounded-lg p-4">
-              <h3 className="font-semibold text-blue-800 mb-2">💡 使用說明</h3>
-              <ul className="text-blue-700 text-sm space-y-1">
+            <div className="bg-blue-50 rounded-lg p-3">
+              <h4 className="font-medium text-blue-800 mb-2 text-sm">💡 使用說明</h4>
+              <ul className="text-blue-700 text-xs space-y-1">
                 <li>• 輸入至少2個需求</li>
                 <li>• 系統會計算交集區域</li>
                 <li>• 橘色虛線是交集範圍</li>
                 <li>• 自動搜尋附近租屋</li>
                 <li>• 點擊物件可查看詳情</li>
               </ul>
+            </div>
+          </div>
+
+          {/* 地圖區域 - 5/11 */}
+          <div ref={mapContainerRef} className="col-span-5 bg-white rounded-lg shadow-md overflow-hidden">
+            <LeafletMap
+              center={mapCenter}
+              zoom={13}
+              className="w-full h-full"
+              onMapReady={handleMapReady}
+            />
+          </div>
+
+          {/* 顯示結果區 - 2/11 */}
+          <div className="col-span-2 bg-white rounded-lg shadow-md p-4 overflow-y-auto">
+            <h3 className="font-semibold text-lg mb-3 text-gray-900">🏠 搜尋結果</h3>
+            
+            {properties.length > 0 ? (
+              <div className="space-y-3">
+                {properties.map((property, index) => (
+                  <div 
+                    key={property.id} 
+                    className="p-3 bg-green-50 rounded text-sm cursor-pointer hover:bg-green-100 transition-colors"
+                    onClick={() => {
+                      if (property.url) {
+                        console.log('🔗 開啟 SUUMO 物件頁面:', property.url);
+                        window.open(property.url, '_blank', 'noopener,noreferrer');
+                      }
+                    }}
+                  >
+                    <div className="font-medium text-green-800 text-xs mb-1">{property.title}</div>
+                    <div className="text-green-700 font-semibold text-sm">{property.price}</div>
+                    <div className="text-gray-600 text-xs">{property.location}</div>
+                    {property.size && (
+                      <div className="text-gray-500 text-xs">面積: {property.size}</div>
+                    )}
+                    {property.url && (
+                      <div className="text-blue-600 text-xs mt-1">點擊查看詳情 →</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-32 text-gray-500 text-sm">
+                {isSearching ? '🔍 搜尋中...' : '尚無搜尋結果'}
+              </div>
+            )}
+          </div>
+
+          {/* 右側廣告區 - 1/11 */}
+          <div className="col-span-1 bg-gray-100 rounded-lg shadow-md flex items-center justify-center">
+            <div className="text-gray-400 text-xs text-center transform -rotate-90 whitespace-nowrap">
+              廣告位置
             </div>
           </div>
         </div>

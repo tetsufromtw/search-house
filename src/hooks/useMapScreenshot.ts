@@ -416,9 +416,18 @@ export function useMapScreenshot() {
         ignoreElements: (element) => {
           const className = element.className;
           if (typeof className === 'string') {
-            return className.includes('gmnoprint') || 
-                   className.includes('gm-control') ||
-                   className.includes('gm-fullscreen');
+            // Google Maps 控制元件
+            if (className.includes('gmnoprint') || 
+                className.includes('gm-control') ||
+                className.includes('gm-fullscreen')) {
+              return true;
+            }
+            // Leaflet 控制元件
+            if (className.includes('leaflet-control-zoom') || 
+                className.includes('leaflet-control-attribution') ||
+                className.includes('leaflet-bar')) {
+              return true;
+            }
           }
           return false;
         },
