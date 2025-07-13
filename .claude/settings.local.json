@@ -17,7 +17,9 @@
       "Bash(rg:*)",
       "Bash(find:*)",
       "Bash(npx tsc:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(kill:*)",
+      "Bash(npx:*)"
     ],
     "deny": []
   }

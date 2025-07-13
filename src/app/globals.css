@@ -1,22 +1,189 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
+  --background: #f8fafc;
   --foreground: #171717;
+  
+  /* 新增主題顏色變數 */
+  --header-bg: #e2e8f0;
+  --header-text: #1e293b;
+  --main-bg: #ffffff;
+  --main-text: #374151;
+  --footer-bg: #f1f5f9;
+  --footer-text: #64748b;
+  --border: #cbd5e1;
+  --accent: #3b82f6;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  
+  /* 主題顏色 */
+  --color-header: var(--header-bg);
+  --color-header-text: var(--header-text);
+  --color-main: var(--main-bg);
+  --color-main-text: var(--main-text);
+  --color-footer: var(--footer-bg);
+  --color-footer-text: var(--footer-text);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--error);
+  
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
+/* 深色主題 - 自動檢測系統偏好 */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0f172a;
+    --foreground: #f1f5f9;
+    
+    --header-bg: #1e293b;
+    --header-text: #f1f5f9;
+    --main-bg: #0f172a;
+    --main-text: #e2e8f0;
+    --footer-bg: #334155;
+    --footer-text: #cbd5e1;
+    --border: #475569;
+    --accent: #60a5fa;
+    --success: #34d399;
+    --warning: #fbbf24;
+    --error: #f87171;
   }
+}
+
+/* 深色主題 - 手動切換 */
+.dark {
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+  
+  --header-bg: #1e293b;
+  --header-text: #f1f5f9;
+  --main-bg: #0f172a;
+  --main-text: #e2e8f0;
+  --footer-bg: #334155;
+  --footer-text: #cbd5e1;
+  --border: #475569;
+  --accent: #60a5fa;
+  --success: #34d399;
+  --warning: #fbbf24;
+  --error: #f87171;
+}
+
+/* 主題風格系統 */
+
+/* 簡約風格 */
+.theme-minimal {
+  /* 顏色 */
+  --header-bg: #ffffff;
+  --header-text: #000000;
+  --main-bg: #fafafa;
+  --main-text: #333333;
+  --footer-bg: #f5f5f5;
+  --footer-text: #666666;
+  --border: #e0e0e0;
+  --accent: #000000;
+  --success: #4caf50;
+  --warning: #ff9800;
+  --error: #f44336;
+  
+  /* UI 樣式變數 */
+  --border-radius: 0px;
+  --border-width: 1px;
+  --shadow: none;
+  --button-radius: 0px;
+  --input-radius: 0px;
+  --card-radius: 0px;
+  --font-weight-normal: 300;
+  --font-weight-bold: 400;
+  --spacing: 8px;
+}
+
+/* 科技風格 */
+.theme-tech {
+  /* 顏色 */
+  --header-bg: #1a1a2e;
+  --header-text: #00f5ff;
+  --main-bg: #16213e;
+  --main-text: #ffffff;
+  --footer-bg: #0f3460;
+  --footer-text: #00d4ff;
+  --border: #00f5ff;
+  --accent: #00f5ff;
+  --success: #00ff88;
+  --warning: #ffaa00;
+  --error: #ff0080;
+  
+  /* UI 樣式變數 */
+  --border-radius: 0px;
+  --border-width: 2px;
+  --shadow: 0 0 20px rgba(0, 245, 255, 0.3);
+  --button-radius: 0px;
+  --input-radius: 0px;
+  --card-radius: 0px;
+  --font-weight-normal: 400;
+  --font-weight-bold: 700;
+  --spacing: 12px;
+}
+
+/* 自然風格 */
+.theme-natural {
+  /* 顏色 */
+  --header-bg: #8bc34a;
+  --header-text: #2e7d32;
+  --main-bg: #f1f8e9;
+  --main-text: #33691e;
+  --footer-bg: #c8e6c9;
+  --footer-text: #1b5e20;
+  --border: #81c784;
+  --accent: #4caf50;
+  --success: #66bb6a;
+  --warning: #ffb74d;
+  --error: #e57373;
+  
+  /* UI 樣式變數 */
+  --border-radius: 20px;
+  --border-width: 2px;
+  --shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
+  --button-radius: 25px;
+  --input-radius: 15px;
+  --card-radius: 20px;
+  --font-weight-normal: 400;
+  --font-weight-bold: 600;
+  --spacing: 16px;
+}
+
+/* 通用樣式類別 */
+.themed-container {
+  border-radius: var(--card-radius);
+  border-width: var(--border-width);
+  box-shadow: var(--shadow);
+}
+
+.themed-button {
+  border-radius: var(--button-radius);
+  border-width: var(--border-width);
+  font-weight: var(--font-weight-bold);
+  padding: var(--spacing);
+}
+
+.themed-input {
+  border-radius: var(--input-radius);
+  border-width: var(--border-width);
+  padding: var(--spacing);
+}
+
+.themed-card {
+  border-radius: var(--card-radius);
+  box-shadow: var(--shadow);
+  border-width: var(--border-width);
 }
 
 body {

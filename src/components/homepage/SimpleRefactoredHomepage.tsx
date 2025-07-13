@@ -1,9 +1,8 @@
-'use client';
-
 /**
- * 主頁 Leaflet + SUUMO 整合元件
- * 基於 LeafletMultiSearchContainer 改造
+ * 簡化重構版首頁 - 直接複製原本邏輯
  */
+
+'use client';
 
 import React, { useState, useRef, useCallback } from 'react';
 import LeafletMap, { LeafletCircleManager } from '../leaflet/LeafletMap';
@@ -11,7 +10,7 @@ import { searchNearbyPlaces } from '@/services/placesService';
 import { searchSuumoProperties } from '@/utils/suumoIntegration';
 import { LeafletIntersectionCalculator, createRequirementCircle } from '@/utils/leafletIntersection';
 
-// 型別定義
+// 型別定義 - 完全複製原本的
 interface IntersectionArea {
   id: string;
   center: { lat: number; lng: number };
@@ -50,11 +49,12 @@ interface RequirementInput {
 // 預設需求顏色
 const REQUIREMENT_COLORS = ['#00704A', '#FF6B35', '#4ECDC4'];
 
-export default function LeafletHomepage() {
+export default function SimpleRefactoredHomepage() {
   const mapRef = useRef<any>(null);
   const circleManagerRef = useRef<LeafletCircleManager | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
   
-  // 三個需求輸入
+  // 完全複製原本的狀態
   const [requirements, setRequirements] = useState<RequirementInput[]>([
     {
       id: 'req1',
@@ -90,39 +90,26 @@ export default function LeafletHomepage() {
   const [isSearching, setIsSearching] = useState(false);
   const [mapCenter] = useState<[number, number]>([35.6762, 139.6503]);
 
-  // 地圖容器 ref 用於截圖
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-
-  /**
-   * 地圖準備就緒回調
-   */
+  // 完全複製原本的函數
   const handleMapReady = useCallback((map: any) => {
     console.log('🗺️ Leaflet 地圖準備就緒');
     mapRef.current = map;
     circleManagerRef.current = new LeafletCircleManager(map);
   }, []);
 
-  /**
-   * 更新需求輸入
-   */
   const updateRequirement = useCallback((id: string, query: string) => {
     setRequirements(prev => prev.map(req => 
       req.id === id ? { ...req, query } : req
     ));
   }, []);
 
-  /**
-   * 切換需求啟用狀態
-   */
   const toggleRequirement = useCallback((id: string) => {
     setRequirements(prev => prev.map(req => 
       req.id === id ? { ...req, enabled: !req.enabled } : req
     ));
   }, []);
 
-  /**
-   * 執行搜尋
-   */
+  // 完全複製原本的搜尋邏輯
   const handleSearch = useCallback(async () => {
     if (!mapRef.current || !circleManagerRef.current) {
       console.warn('⚠️ 地圖未準備好');
@@ -148,29 +135,32 @@ export default function LeafletHomepage() {
       const center = mapRef.current.getCenter();
       console.log('📍 搜尋中心:', { lat: center.lat, lng: center.lng });
 
-      // 更新需求狀態為載入中
-      setRequirements(prev => prev.map(req => 
-        enabledRequirements.some(enabled => enabled.id === req.id)
-          ? { ...req, loading: true, error: null }
-          : req
-      ));
-
-      // 搜尋各個需求的地點
+      // 為每個需求搜尋地點並繪製圓圈
       const requirementCircles: ReturnType<typeof createRequirementCircle>[] = [];
-      const updatedRequirements: RequirementInput[] = [];
+      const updatedRequirements = [...requirements];
+      
+      for (let i = 0; i < enabledRequirements.length; i++) {
+        const req = enabledRequirements[i];
+        const reqIndex = requirements.findIndex(r => r.id === req.id);
+        
+        if (reqIndex === -1) continue;
 
-      for (const req of enabledRequirements) {
+        // 設置載入狀態
+        updatedRequirements[reqIndex] = { ...req, loading: true, error: null };
+        setRequirements([...updatedRequirements]);
+
         try {
-          // 使用 OSM 搜尋地點
-          const searchResult = await searchNearbyPlaces(
-            [req.query], // 使用輸入的查詢字串
-            { lat: center.lat, lng: center.lng },
-            1000 // 搜尋半徑
-          );
-
+          console.log(`🔍 搜尋需求 ${i + 1}: ${req.query}`);
+          
+          // 使用原本的 API
+          const searchResult = await searchNearbyPlaces([req.query], { lat: center.lat, lng: center.lng }, 1000);
+          
+          console.log('🔍 搜尋結果:', searchResult);
+          
           const searchData = searchResult.results[req.query];
           
           if (searchData && searchData.locations.length > 0) {
+            // 轉換資料格式 - 按照原本的邏輯
             const locations = searchData.locations.map((loc: any) => ({
               id: loc.id,
               name: loc.name,
@@ -179,7 +169,17 @@ export default function LeafletHomepage() {
               address: loc.address || ''
             }));
 
-            // 建立需求圓圈
+            // 更新需求資料
+            updatedRequirements[reqIndex] = {
+              ...req,
+              loading: false,
+              error: null,
+              locations
+            };
+
+            console.log(`✅ 需求 ${i + 1} 找到 ${locations.length} 個地點`);
+
+            // 建立需求圓圈 - 按照原本的邏輯
             const circle = createRequirementCircle(
               req.query,
               req.query,
@@ -199,49 +199,41 @@ export default function LeafletHomepage() {
               locations
             );
 
-            updatedRequirements.push({
-              ...req,
-              loading: false,
-              error: null,
-              locations
-            });
-
-            console.log(`✅ 需求 ${req.query} 完成: ${locations.length} 個地點`);
           } else {
-            console.warn(`⚠️ 需求 ${req.query} 沒有找到地點`);
-            updatedRequirements.push({
+            updatedRequirements[reqIndex] = {
               ...req,
               loading: false,
-              error: '沒有找到地點',
+              error: '未找到相關地點',
               locations: []
-            });
+            };
+            console.warn(`⚠️ 需求 ${i + 1} 未找到地點`);
           }
+
         } catch (error) {
-          console.error(`❌ 需求 ${req.query} 搜尋失敗:`, error);
-          updatedRequirements.push({
+          console.error(`❌ 需求 ${i + 1} 搜尋失敗:`, error);
+          updatedRequirements[reqIndex] = {
             ...req,
             loading: false,
-            error: error instanceof Error ? error.message : '搜尋失敗',
+            error: '搜尋失敗',
             locations: []
-          });
+          };
         }
+
+        // 更新狀態
+        setRequirements([...updatedRequirements]);
       }
 
-      // 計算交集
+      // 計算交集 - 使用已建立的圓圈
       if (requirementCircles.length >= 2) {
-        console.log('🧮 計算交集區域');
-        const intersections = LeafletIntersectionCalculator.calculateIntersections(
-          requirementCircles,
-          300, // 最小交集半徑
-          800  // 最大交集半徑
-        );
+        console.log('🎯 計算交集區域');
+        
+        const intersections = LeafletIntersectionCalculator.calculateIntersections(requirementCircles);
+        console.log(`✅ 找到 ${intersections.length} 個交集區域`);
 
-        console.log(`🎯 找到 ${intersections.length} 個交集區域`);
-
-        // 在地圖上顯示交集
-        for (const [index, intersection] of intersections.entries()) {
+        // 繪製交集區域
+        for (const intersection of intersections.slice(0, 5)) {
           await circleManagerRef.current!.addIntersectionArea(
-            `${index}`,
+            intersection.id,
             [intersection.center.lat, intersection.center.lng],
             intersection.radius,
             intersection.requirements
@@ -250,89 +242,55 @@ export default function LeafletHomepage() {
 
         setIntersectionAreas(intersections);
 
-        // 搜尋交集區域的租屋
+        // 搜尋房源
         if (intersections.length > 0) {
-          await handleSearchProperties(intersections.slice(0, 3));
+          console.log('🏠 搜尋租屋物件');
+          const propertyPromises = intersections.slice(0, 3).map(area =>
+            searchSuumoProperties(area.center, area.radius).catch(error => {
+              console.error('房源搜尋失敗:', error);
+              return [];
+            })
+          );
+
+          const propertyResults = await Promise.allSettled(propertyPromises);
+          const allProperties: PropertyResult[] = [];
+          
+          propertyResults.forEach(result => {
+            if (result.status === 'fulfilled' && result.value.success) {
+              const properties = result.value.properties.map((prop: any) => ({
+                id: prop.id || Math.random().toString(),
+                title: prop.title || '未知標題',
+                price: prop.price || '價格未提供',
+                location: prop.location || '位置未提供',
+                url: prop.url,
+                coordinates: prop.coordinates,
+                size: prop.size,
+                tags: prop.tags
+              }));
+              allProperties.push(...properties);
+            }
+          });
+
+          const uniqueProperties = allProperties.filter((prop, index, self) => 
+            index === self.findIndex(p => p.id === prop.id)
+          ).slice(0, 5);
+          
+          setProperties(uniqueProperties);
+          console.log(`🎉 找到 ${uniqueProperties.length} 個租屋物件`);
         }
-      } else {
-        setIntersectionAreas([]);
-        setProperties([]);
+
+        // 適應地圖邊界
+        await circleManagerRef.current!.fitAllCircles();
       }
-
-      // 更新需求狀態
-      setRequirements(prev => prev.map(req => {
-        const updated = updatedRequirements.find(u => u.id === req.id);
-        return updated || { ...req, loading: false };
-      }));
-
-      // 適應地圖視角
-      if (requirementCircles.length > 0) {
-        await circleManagerRef.current.fitAllCircles();
-      }
-
-      console.log('✅ 主頁搜尋完成');
 
     } catch (error) {
-      console.error('❌ 搜尋失敗:', error);
-      
-      // 清除載入狀態
-      setRequirements(prev => prev.map(req => ({
-        ...req,
-        loading: false,
-        error: error instanceof Error ? error.message : '搜尋失敗'
-      })));
+      console.error('❌ 搜尋過程發生錯誤:', error);
     } finally {
       setIsSearching(false);
+      console.log('✅ 搜尋完成');
     }
   }, [requirements]);
 
-  /**
-   * 搜尋交集區域的租屋
-   */
-  const handleSearchProperties = useCallback(async (intersections: IntersectionArea[]) => {
-    console.log('🏠 搜尋交集區域租屋:', intersections.length);
-
-    try {
-      const allProperties: PropertyResult[] = [];
-
-      for (const intersection of intersections) {
-        const result = await searchSuumoProperties(
-          intersection.center,
-          intersection.radius
-        );
-
-        if (result.success && result.properties.length > 0) {
-          const properties = result.properties.map(prop => ({
-            id: prop.id || Math.random().toString(),
-            title: prop.title || '未知標題',
-            price: prop.price || '價格未提供',
-            location: prop.location || '位置未提供',
-            url: prop.url,
-            coordinates: prop.coordinates,
-            size: prop.size,
-            tags: prop.tags
-          }));
-          allProperties.push(...properties);
-        }
-      }
-
-      // 去重並限制為前5個
-      const uniqueProperties = allProperties.filter((prop, index, self) => 
-        index === self.findIndex(p => p.id === prop.id)
-      ).slice(0, 5);
-
-      setProperties(uniqueProperties);
-      console.log(`🏠 找到 ${uniqueProperties.length} 個租屋物件`);
-
-    } catch (error) {
-      console.error('❌ 租屋搜尋失敗:', error);
-      setProperties([]);
-    }
-  }, []);
-
-  /**
-   * 清除所有內容
-   */
   const handleClear = useCallback(() => {
     if (circleManagerRef.current) {
       circleManagerRef.current.clearAll();
@@ -345,7 +303,7 @@ export default function LeafletHomepage() {
       error: null,
       locations: []
     })));
-
+    
     setIntersectionAreas([]);
     setProperties([]);
     
@@ -355,11 +313,11 @@ export default function LeafletHomepage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-6">
-        {/* 上方需求輸入區域 */}
+        {/* 上方需求輸入區域 - 完全複製原本的 */}
         <div className="mb-6">
           <div className="text-center mb-6">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              🏠 租屋交集搜尋
+              🏠 租屋交集搜尋 (重構版)
             </h1>
             <p className="text-gray-600">
               輸入三個需求，找出最佳交集區域的租屋物件
@@ -428,10 +386,9 @@ export default function LeafletHomepage() {
             </div>
           </div>
         </div>
-
       </div>
 
-      {/* 主要內容區域 - 全寬度固定高度布局 */}
+      {/* 主要內容區域 - 完全複製原本的布局 */}
       <div className="w-full px-4">
         <div className="grid grid-cols-11 gap-4 h-[600px]">
           {/* 左側廣告區 - 1/11 */}

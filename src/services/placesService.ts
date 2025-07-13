@@ -135,47 +135,32 @@ export class UnifiedPlacesService {
       const unifiedResults: Record<string, UnifiedSearchResult> = {};
 
       Object.entries(osmResults).forEach(([requirement, osmResult]) => {
-        // 如果 OSM 沒有結果，使用模擬資料作為回退
-        if (osmResult.total_found === 0) {
-          console.log(`⚠️ OSM 沒有找到 ${requirement}，使用模擬資料`);
-          const mockData = this.generateMockLocations(requirement, center, radius);
-          
-          unifiedResults[requirement] = {
-            requirement,
-            locations: mockData,
-            source: 'osm', // 仍標記為 OSM，但實際是回退資料
-            cached: false,
-            api_cost: 0,
-            query_time: osmResult.query_time
-          };
-        } else {
-          unifiedResults[requirement] = {
-            requirement,
-            locations: osmResult.locations.map(this.convertOSMToUnified),
-            source: 'osm',
-            cached: false,
-            api_cost: 0, // OSM 完全免費
-            query_time: osmResult.query_time
-          };
-        }
+        // 如果 OSM 沒有結果，就是沒有結果！不要假資料
+        unifiedResults[requirement] = {
+          requirement,
+          locations: osmResult.locations.map(this.convertOSMToUnified),
+          source: 'osm',
+          cached: false,
+          api_cost: 0, // OSM 完全免費
+          query_time: osmResult.query_time
+        };
       });
 
       return unifiedResults;
     } catch (error) {
-      console.error('❌ OSM 查詢完全失敗，全部使用模擬資料:', error);
+      console.error('❌ OSM 查詢完全失敗，回傳空結果:', error);
       
-      // 完全回退到模擬資料
+      // 查詢失敗就回傳空結果，不要假資料
       const unifiedResults: Record<string, UnifiedSearchResult> = {};
       
       requirements.forEach(requirement => {
-        const mockData = this.generateMockLocations(requirement, center, radius);
         unifiedResults[requirement] = {
           requirement,
-          locations: mockData,
-          source: 'osm', // 標記為 OSM (實際是模擬)
+          locations: [], // 空結果
+          source: 'osm',
           cached: false,
           api_cost: 0,
-          query_time: 500 // 模擬查詢時間
+          query_time: 0
         };
       });
 
@@ -383,124 +368,6 @@ export class UnifiedPlacesService {
     }
   }
 
-  /**
-   * 生成模擬地點資料 (作為 OSM 回退)
-   */
-  private generateMockLocations(
-    requirement: string, 
-    center: { lat: number; lng: number }, 
-    radius: number
-  ): UnifiedLocation[] {
-    console.log(`🎭 生成 ${requirement} 的模擬資料`);
-
-    const normalizedReq = requirement.toLowerCase();
-    let mockData: UnifiedLocation[] = [];
-
-    // 根據需求類型生成不同的模擬資料
-    if (normalizedReq.includes('starbucks') || normalizedReq.includes('スターバックス')) {
-      mockData = this.generateStarbucksMock(center, radius);
-    } else if (normalizedReq.includes('gym') || normalizedReq.includes('fitness') || normalizedReq.includes('健身房')) {
-      mockData = this.generateGymMock(center, radius);
-    } else if (normalizedReq.includes('convenience') || normalizedReq.includes('コンビニ') || normalizedReq.includes('便利商店')) {
-      mockData = this.generateConvenienceMock(center, radius);
-    } else {
-      // 通用模擬資料
-      mockData = this.generateGenericMock(requirement, center, radius);
-    }
-
-    console.log(`✅ 生成了 ${mockData.length} 個 ${requirement} 模擬地點`);
-    return mockData;
-  }
-
-  private generateStarbucksMock(center: { lat: number; lng: number }, radius: number): UnifiedLocation[] {
-    return [
-      {
-        id: 'mock_starbucks_1',
-        name: 'スターバックス 模擬店舗1',
-        lat: center.lat + (Math.random() - 0.5) * 0.01,
-        lng: center.lng + (Math.random() - 0.5) * 0.01,
-        address: '東京都渋谷区 模擬地址1',
-        rating: 4.2,
-        types: ['cafe', 'establishment'],
-        source: 'osm'
-      },
-      {
-        id: 'mock_starbucks_2',
-        name: 'スターバックス 模擬店舗2',
-        lat: center.lat + (Math.random() - 0.5) * 0.008,
-        lng: center.lng + (Math.random() - 0.5) * 0.008,
-        address: '東京都新宿区 模擬地址2',
-        rating: 4.0,
-        types: ['cafe', 'establishment'],
-        source: 'osm'
-      }
-    ];
-  }
-
-  private generateGymMock(center: { lat: number; lng: number }, radius: number): UnifiedLocation[] {
-    return [
-      {
-        id: 'mock_gym_1',
-        name: 'フィットネスクラブ 模擬店1',
-        lat: center.lat + (Math.random() - 0.5) * 0.01,
-        lng: center.lng + (Math.random() - 0.5) * 0.01,
-        address: '東京都港区 模擬地址1',
-        rating: 4.1,
-        types: ['gym', 'fitness', 'establishment'],
-        source: 'osm'
-      },
-      {
-        id: 'mock_gym_2',
-        name: 'スポーツジム 模擬店2',
-        lat: center.lat + (Math.random() - 0.5) * 0.009,
-        lng: center.lng + (Math.random() - 0.5) * 0.009,
-        address: '東京都千代田区 模擬地址2',
-        rating: 3.9,
-        types: ['gym', 'fitness', 'establishment'],
-        source: 'osm'
-      }
-    ];
-  }
-
-  private generateConvenienceMock(center: { lat: number; lng: number }, radius: number): UnifiedLocation[] {
-    return [
-      {
-        id: 'mock_conv_1',
-        name: 'セブン-イレブン 模擬店1',
-        lat: center.lat + (Math.random() - 0.5) * 0.008,
-        lng: center.lng + (Math.random() - 0.5) * 0.008,
-        address: '東京都中央区 模擬地址1',
-        rating: 3.8,
-        types: ['convenience_store', 'establishment'],
-        source: 'osm'
-      },
-      {
-        id: 'mock_conv_2',
-        name: 'ファミリーマート 模擬店2',
-        lat: center.lat + (Math.random() - 0.5) * 0.007,
-        lng: center.lng + (Math.random() - 0.5) * 0.007,
-        address: '東京都台東区 模擬地址2',
-        rating: 3.7,
-        types: ['convenience_store', 'establishment'],
-        source: 'osm'
-      }
-    ];
-  }
-
-  private generateGenericMock(requirement: string, center: { lat: number; lng: number }, radius: number): UnifiedLocation[] {
-    return [
-      {
-        id: `mock_${requirement}_1`,
-        name: `${requirement} 模擬店舗1`,
-        lat: center.lat + (Math.random() - 0.5) * 0.01,
-        lng: center.lng + (Math.random() - 0.5) * 0.01,
-        address: '東京都 模擬地址1',
-        rating: 4.0,
-        types: ['establishment'],
-        source: 'osm'
-      }
-    ];
-  }
 
   /**
    * 更新服務配置

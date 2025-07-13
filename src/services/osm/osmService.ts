@@ -76,6 +76,26 @@ export class OSMService {
   }
 
   /**
+   * 查詢指定區域的 Anytime Fitness
+   */
+  async queryAnytimeFitness(bounds: AreaBounds): Promise<OSMQueryResult> {
+    const query = `
+      [out:json][timeout:${this.timeout}];
+      (
+        node["brand"="Anytime Fitness"](${bounds.south},${bounds.west},${bounds.north},${bounds.east});
+        way["brand"="Anytime Fitness"](${bounds.south},${bounds.west},${bounds.north},${bounds.east});
+        node["name"~"Anytime Fitness",i](${bounds.south},${bounds.west},${bounds.north},${bounds.east});
+        way["name"~"Anytime Fitness",i](${bounds.south},${bounds.west},${bounds.north},${bounds.east});
+        node["name"~"エニタイムフィットネス",i](${bounds.south},${bounds.west},${bounds.north},${bounds.east});
+        way["name"~"エニタイムフィットネス",i](${bounds.south},${bounds.west},${bounds.north},${bounds.east});
+      );
+      out center meta;
+    `;
+
+    return await this.executeQuery(query, 'anytime_fitness');
+  }
+
+  /**
    * 查詢指定區域的便利商店
    */
   async queryConvenienceStores(bounds: AreaBounds): Promise<OSMQueryResult> {
@@ -98,21 +118,8 @@ export class OSMService {
    * 根據需求類型查詢
    */
   async queryByRequirement(requirement: string, bounds: AreaBounds): Promise<OSMQueryResult> {
-    const normalizedReq = requirement.toLowerCase();
-
-    if (normalizedReq.includes('starbucks') || normalizedReq.includes('スターバックス')) {
-      return await this.queryStarbucks(bounds);
-    } else if (normalizedReq.includes('gym') || normalizedReq.includes('健身房') || 
-               normalizedReq.includes('fitness') || normalizedReq.includes('anytime')) {
-      return await this.queryGyms(bounds);
-    } else if (normalizedReq.includes('convenience') || normalizedReq.includes('コンビニ') ||
-               normalizedReq.includes('便利商店') || normalizedReq.includes('seven') ||
-               normalizedReq.includes('family') || normalizedReq.includes('lawson')) {
-      return await this.queryConvenienceStores(bounds);
-    } else {
-      // 通用查詢
-      return await this.queryGeneral(requirement, bounds);
-    }
+    // 直接用店名搜尋，不要分類
+    return await this.queryGeneral(requirement, bounds);
   }
 
   /**
