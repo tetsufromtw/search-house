@@ -12,7 +12,7 @@ interface LeafletMapProps {
   center?: [number, number];
   zoom?: number;
   className?: string;
-  tileStyle?: 'osm' | 'cartodb-light' | 'cartodb-dark';
+  tileStyle?: 'osm' | 'cartodb-light' | 'cartodb-light-jp' | 'cartodb-positron' | 'cartodb-dark' | 'gsi-standard' | 'gsi-pale';
   onMapReady?: (map: any) => void;
   onBoundsChange?: (bounds: any) => void;
   children?: React.ReactNode;
@@ -78,13 +78,62 @@ export default function LeafletMap({
       let tileLayer;
       
       switch (tileStyle) {
+        case 'gsi-standard':
+          // 日本地理院標準地圖 - 所有級別都顯示日文
+          tileLayer = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png', {
+            attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>',
+            maxZoom: 18,
+            minZoom: 5
+          });
+          break;
+        case 'gsi-pale':
+          // 日本地理院淡色地圖 - 適合疊加數據，所有級別都顯示日文
+          tileLayer = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png', {
+            attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>',
+            maxZoom: 18,
+            minZoom: 5
+          });
+          break;
         case 'cartodb-light':
+          // 使用支援多語言的 CartoDB Light，並添加日文標籤
           tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
             attribution: '© OpenStreetMap contributors, © CARTO',
             maxZoom: 19,
             minZoom: 3,
             subdomains: 'abcd'
           });
+          break;
+        case 'cartodb-light-jp':
+          // CartoDB Light 優化版 - 保持視覺風格且改善日文顯示
+          tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap contributors, © CARTO',
+            maxZoom: 19,
+            minZoom: 10, // 調整為更合理的最小縮放級別
+            subdomains: 'abcd',
+            // 添加特殊參數嘗試改善日文顯示
+            detectRetina: true,
+            updateWhenIdle: false
+          });
+          break;
+        case 'cartodb-positron':
+          // CartoDB Positron - 另一種輕量風格，可能對日文支援更好
+          tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap contributors, © CARTO',
+            maxZoom: 19,
+            minZoom: 3,
+            subdomains: 'abcd'
+          });
+          
+          // 疊加日文標籤層
+          const labelLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
+            maxZoom: 19,
+            minZoom: 3,
+            subdomains: 'abcd',
+            pane: 'overlayPane'
+          });
+          
+          // 創建圖層組
+          tileLayer = L.layerGroup([tileLayer, labelLayer]);
           break;
         case 'cartodb-dark':
           tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
